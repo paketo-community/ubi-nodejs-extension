@@ -9,6 +9,7 @@ require (
 	github.com/paketo-buildpacks/libnodejs v0.0.2
 	github.com/paketo-buildpacks/node-start v1.0.11
 	github.com/paketo-buildpacks/packit/v2 v2.11.0
+	github.com/paketo-buildpacks/npm-start v1.0.6
 	github.com/sclevine/spec v1.4.0
 )
 
