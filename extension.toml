@@ -1,0 +1,26 @@
+api = "0.7"
+
+[extension]
+id = "redhat-runtimes/nodejs"
+name = "RedHat Runtimes Node.js Dependency Extension"
+version = "0.0.1"
+description = "This extension installs the appropriate nodejs runtime via dnf"
+
+[metadata]
+  include-files = ["bin/generate", "bin/detect", "bin/run", "extension.toml"]
+  [metadata.default-versions]
+    node = "18.*.*"
+
+  [[metadata.dependencies]]
+    id = "node"
+    name = "Ubi Node Extension"
+    stacks = ["ubi8-paketo"]
+    source = "quay.io/midawson/ubi8-paketo-run-nodejs-18"
+    version = "18.1000"
+
+  [[metadata.dependencies]]
+    id = "node"
+    name = "Ubi Node Extension"
+    stacks = ["ubi8-paketo"]
+    source = "quay.io/midawson/ubi8-paketo-run-nodejs-16"
+    version = "16.1000"
