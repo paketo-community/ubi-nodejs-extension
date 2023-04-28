@@ -4,42 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/paketo-buildpacks/libnodejs"
 	nodestart "github.com/paketo-buildpacks/node-start"
-	npmstart "github.com/paketo-buildpacks/npm-start"
 	"github.com/paketo-buildpacks/packit/v2"
 )
-
-// functionality from npm-start buildpack, also some overlap with npm-install
-func packageJSONWithStartExists(workingDir string, projectPathParser npmstart.PathParser) (path string, err error) {
-
-	projectPath, err := projectPathParser.Get(workingDir)
-	if err != nil {
-		return "", err
-	}
-
-	packageJSONPath := filepath.Join(projectPath, "package.json")
-	_, err = os.Stat(packageJSONPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// no package.json
-			return "", nil
-		}
-		return "", err
-	}
-
-	var pkg *npmstart.PackageJson
-	pkg, err = npmstart.NewPackageJsonFromPath(filepath.Join(projectPath, "package.json"))
-	if err != nil {
-		return "", err
-	}
-
-	if pkg.Scripts.Start != "" {
-		// package.json has start command
-		return packageJSONPath, nil
-	}
-
-	return "", nil
-}
 
 // functionality from node-start
 func nodeApplicationExists(workingDir string, applicationFinder nodestart.ApplicationFinder) (path string, err error) {
@@ -50,15 +18,21 @@ func Detect() packit.DetectFunc {
 	return func(context packit.DetectContext) (packit.DetectResult, error) {
 		// likely move these to main.go ?
 		workingDir := context.WorkingDir
-		projectPathParser := npmstart.NewProjectPathParser()
 		nodeApplicationFinder := nodestart.NewNodeApplicationFinder()
 
-		packageJSON, err := packageJSONWithStartExists(workingDir, projectPathParser)
+		projectPath, err := libnodejs.FindProjectPath(context.WorkingDir)
 		if err != nil {
 			return packit.DetectResult{}, err
 		}
 
-		if packageJSON == "" {
+		pkg, err := libnodejs.ParsePackageJSON(filepath.Join(projectPath))
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return packit.DetectResult{}, packit.Fail
+			}
+		}
+
+		if err != nil || !pkg.HasStartScript() {
 			// no package.json so look for Node.js application files
 			path, err := nodeApplicationExists(workingDir, nodeApplicationFinder)
 			if err != nil {

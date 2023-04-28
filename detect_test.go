@@ -1,7 +1,6 @@
 package ubinodejsextension_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
@@ -11,7 +10,6 @@ import (
 	"path/filepath"
 
 	. "github.com/onsi/gomega"
-	npmstart "github.com/paketo-buildpacks/npm-start"
 	"github.com/paketo-buildpacks/packit/v2"
 	"github.com/sclevine/spec"
 )
@@ -152,13 +150,12 @@ func testDetect(t *testing.T, context spec.G, it spec.S) {
 	context("when there is a package.json without a start script and no application", func() {
 		it.Before(func() {
 			workingDir = t.TempDir()
-			content := npmstart.PackageJson{Scripts: npmstart.PackageScripts{
-				PreStart:  "npm run lint",
-				PostStart: "npm run test",
-			}}
-			bytes, err := json.Marshal(content)
-			Expect(err).To(BeNil())
-			Expect(os.WriteFile(filepath.Join(workingDir, "package.json"), bytes, 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(workingDir, "package.json"), []byte(`{
+				"scripts": {
+						"prestart":  "npm run lint",
+						"poststart": "npm run test"
+				}
+			}`), 0600)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(workingDir, "plan"), nil, 0600)).To(Succeed())
 
 			err = os.Chdir(workingDir)
@@ -178,12 +175,11 @@ func testDetect(t *testing.T, context spec.G, it spec.S) {
 	context("when there is a package.json with start script in default directory", func() {
 		it.Before(func() {
 			workingDir = t.TempDir()
-			content := npmstart.PackageJson{Scripts: npmstart.PackageScripts{
-				Start: "node server.js",
-			}}
-			bytes, err := json.Marshal(content)
-			Expect(err).To(BeNil())
-			Expect(os.WriteFile(filepath.Join(workingDir, "package.json"), bytes, 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(workingDir, "package.json"), []byte(`{
+				"scripts": {
+						"start":  "node server.js"
+				}
+			}`), 0600)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(workingDir, "plan"), nil, 0600)).To(Succeed())
 
 			err = os.Chdir(workingDir)
@@ -204,13 +200,12 @@ func testDetect(t *testing.T, context spec.G, it spec.S) {
 		it.Before(func() {
 			workingDir = t.TempDir()
 			t.Setenv("BP_NODE_PROJECT_PATH", "./src")
-			content := npmstart.PackageJson{Scripts: npmstart.PackageScripts{
-				Start: "node server.js",
-			}}
-			bytes, err := json.Marshal(content)
-			Expect(err).To(BeNil())
 			Expect(os.MkdirAll(filepath.Join(workingDir, "src"), os.ModePerm)).To(Succeed())
-			Expect(os.WriteFile(filepath.Join(workingDir, "src", "package.json"), bytes, 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(workingDir, "src", "package.json"), []byte(`{
+				"scripts": {
+						"start":  "node server.js"
+				}
+			}`), 0600)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(workingDir, "plan"), nil, 0600)).To(Succeed())
 
 			err = os.Chdir(workingDir)
@@ -230,14 +225,13 @@ func testDetect(t *testing.T, context spec.G, it spec.S) {
 	context("when there is a package.json without a start script, with application", func() {
 		it.Before(func() {
 			workingDir = t.TempDir()
-			content := npmstart.PackageJson{Scripts: npmstart.PackageScripts{
-				PreStart:  "npm run lint",
-				PostStart: "npm run test",
-			}}
-			bytes, err := json.Marshal(content)
-			Expect(err).To(BeNil())
-			Expect(os.WriteFile(filepath.Join(workingDir, "package.json"), bytes, 0600)).To(Succeed())
-			Expect(os.WriteFile(filepath.Join(workingDir, "server.js"), bytes, 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(workingDir, "package.json"), []byte(`{
+				"scripts": {
+						"prestart":  "npm run lint",
+						"poststart": "npm run test"
+				}
+			}`), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(workingDir, "server.js"), []byte(`dummy`), 0600)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(workingDir, "plan"), nil, 0600)).To(Succeed())
 
 			err = os.Chdir(workingDir)
