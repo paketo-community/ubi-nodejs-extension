@@ -26,10 +26,8 @@ func Detect() packit.DetectFunc {
 		}
 
 		pkg, err := libnodejs.ParsePackageJSON(filepath.Join(projectPath))
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return packit.DetectResult{}, packit.Fail
-			}
+		if err != nil && !os.IsNotExist(err) {
+			return packit.DetectResult{}, packit.Fail
 		}
 
 		if err != nil || !pkg.HasStartScript() {
