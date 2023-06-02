@@ -51,7 +51,7 @@ ubi extension.
      version = "1.4.0"
 
    [lifecycle]
-     version = "0.15.3"
+     version = "0.17.0-pre.2"
 
    [[order]]
      [[order.group]]
@@ -107,10 +107,6 @@ ubi extension.
       registry if you are not running a local registry.
    1. run `docker push localhost:5000/test-builder` to push the builder to the
       local registry or push to a public registry if desired.
-1. Pull the run images needed by the extension. These are not pulled automatically
-   when you build the application.
-   1. run `docker pull quay.io/midawson/ubi8-paketo-run-nodejs-18`
-   1. run `docker pull quay.io/midawson/ubi8-paketo-run-nodejs-16`
 1. Build your Node.js application with the new builder:
    1. run `pack build test-app --path ./app-dir --builder localhost:5000/test-builder --network host -v`
       where test-app will be the name of the image built and app-dir is
