@@ -119,7 +119,7 @@ function buildpack::archive() {
       "${BUILD_DIR}/buildpack"
   else
     jam pack \
-      --buildpack "${ROOT_DIR}/extension.toml" \
+      --extension "${ROOT_DIR}/extension.toml" \
       --version "${version}" \
       --output "${BUILD_DIR}/buildpack.tgz"
   fi
