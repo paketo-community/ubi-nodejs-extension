@@ -3,7 +3,7 @@ module github.com/paketo-community/ubi-nodejs-extension
 go 1.19
 
 require (
-	github.com/BurntSushi/toml v1.3.0
+	github.com/BurntSushi/toml v1.3.2
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/onsi/gomega v1.27.7
 	github.com/paketo-buildpacks/libnodejs v0.0.2
