@@ -39,6 +39,7 @@ ubi extension.
 1. Enable experimental features in pack by running
    `pack config experimental true`. This is needed because extensions
    are currently experimental.
+1. Build the binaries of the extension by running the `./scripts/build.sh` script.
 1. Create a builder which includes the extension. The extension works together
    with the existing Paketo node.js buildpack so a minimal builder
    requires both the node.js buildpack and the extention as follows:
@@ -112,7 +113,7 @@ ubi extension.
       where test-app will be the name of the image built and app-dir is
       directory that contains your Node.js application. Replace
       `localhost:5000` with the host:port for the public repository
-       if you are not using a local repostiory.
+      if you are not using a local repostiory.
    1. run your application with `docker run -p 8080:8080 test-app` replacing
       `8080:8080` with the port on which your application listens.
    1. access your running application and enjoy :).
