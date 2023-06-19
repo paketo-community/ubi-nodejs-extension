@@ -3,8 +3,12 @@
 set -eu
 set -o pipefail
 
+readonly ROOT_DIR="$(cd "$(dirname "${0}")/.." && pwd)"
 readonly PROGDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly BUILDPACKDIR="$(cd "${PROGDIR}/.." && pwd)"
+
+# shellcheck source=SCRIPTDIR/.util/print.sh
+source "${ROOT_DIR}/scripts/.util/print.sh"
 
 function main() {
   while [[ "${#}" != 0 ]]; do
