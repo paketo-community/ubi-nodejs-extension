@@ -39,7 +39,7 @@ ubi extension.
 1. Enable experimental features in pack by running
    `pack config experimental true`. This is needed because extensions
    are currently experimental.
-1. Build the binaries of the extension by running the `./scripts/build.sh` script.
+1. Build the `detect` and `generate` binaries of the extension by running the `./scripts/build.sh` script.
 1. Create a builder which includes the extension. The extension works together
    with the existing Paketo node.js buildpack so a minimal builder
    requires both the node.js buildpack and the extention as follows:
@@ -171,17 +171,6 @@ To run all integration tests, run:
 ## Package buildpack (Generate .tgx & .cnb files)
 
 To generate `buildpackage.cnb` and `buildpack.tgz` files
-
-Pre Process (till this PR https://github.com/buildpacks/pack/pull/1661 is on the release pack release )
-
-1. Clone `https://github.com/itsdarshankumar/pack.git`
-1. Checkout the `extension-package` branch
-1. Run the command `make build`
-1. A binary file called `./out/pack` should be generated.
-1. copy this binary file under `ubi-nodejs-extension./bin` directory
-   - optinaly you can use this command `mkdir -p /<your>/<path>/<to>/ubi-nodejs-extension/.bin/ && cp  /<your>/<path>/<to>/pack/out/pack   /<your>/<path>/<to>/ubi-nodejs-extension/.bin/`
-
-Run below command under the ubi-nodejs-extension directory to generate `buildpackage.cnb` and `buildpack.tgz` files.
 
 ```
 ./scripts/package.sh --version 0.0.1
