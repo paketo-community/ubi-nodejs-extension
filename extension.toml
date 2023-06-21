@@ -7,6 +7,7 @@ version = "0.0.1"
 description = "This extension installs the appropriate nodejs runtime via dnf"
 
 [metadata]
+  pre-package = "./scripts/build.sh"
   include-files = ["bin/generate", "bin/detect", "bin/run", "extension.toml"]
   [metadata.default-versions]
     node = "18.*.*"
