@@ -31,7 +31,7 @@ ubi extension.
    registry an easy way to do that is using
    `docker run -d -p 5000:5000 --restart=always --name registry registry:2`.
 1. Get a current version of pack and ensure it is on your path.
-   It should be at least version 0.28 or later. The releases are
+   It should be at least version v0.30.0-pre2 or later. The releases are
    available from [here](https://github.com/buildpacks/pack/releases).
 1. Clone the repository for this extension
 1. cd into the directory into which you have cloned the repository
