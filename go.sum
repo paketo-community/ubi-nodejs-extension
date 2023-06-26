@@ -1660,8 +1660,8 @@ github.com/paketo-buildpacks/libnodejs v0.0.2 h1:3pPWg0b2uzaPkKNqVRT3dCGJ6XheuMZ
 github.com/paketo-buildpacks/libnodejs v0.0.2/go.mod h1:D69iwG2Uu9Y0VHOrs2xDk9Oy91qMo9j+gLaRwP2jINw=
 github.com/paketo-buildpacks/libreload-packit v0.0.1 h1:K1HhNAqBSzRpefwGOcvdchZwyeNTgNJL9SC7V4paYt8=
 github.com/paketo-buildpacks/libreload-packit v0.0.1/go.mod h1:ZWE3U94Z18yJk8Pc1mP852l9phQsrsZ+An2U98g0rWw=
-github.com/paketo-buildpacks/node-start v1.0.10 h1:QjEo+juWei77Hpimd15JUQvs1V21L3oeGI8kyVyyCzM=
-github.com/paketo-buildpacks/node-start v1.0.10/go.mod h1:ufOcTpl+G6OyoXET7vw1/G0oTT457GiWzJRbM9hHx/M=
+github.com/paketo-buildpacks/node-start v1.0.11 h1:vg9ElyYhyxj4m5m6yEWTjKPS/9VVtUoQKamY+TuVJOc=
+github.com/paketo-buildpacks/node-start v1.0.11/go.mod h1:3WmSRK/q/mKIQweA8jhWJkiF8PwqTC50yeGxHOGOmew=
 github.com/paketo-buildpacks/packit/v2 v2.11.0 h1:hZVM8vpUILaIbsJaPxl/ORtlLMlzwIDVroqGoaiTXP0=
 github.com/paketo-buildpacks/packit/v2 v2.11.0/go.mod h1:IbukGDItnseQlxZfE5QsYMGDyLEe8adV65SoCTNz2ck=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
