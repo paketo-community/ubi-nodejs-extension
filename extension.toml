@@ -15,13 +15,13 @@ description = "This extension installs the appropriate nodejs runtime via dnf"
   [[metadata.dependencies]]
     id = "node"
     name = "Ubi Node Extension"
-    stacks = ["ubi8-paketo"]
-    source = "quay.io/midawson/ubi8-paketo-run-nodejs-18"
+    stacks = ["io.buildpacks.stacks.ubi8"]
+    source = "paketocommunity/run-nodejs-18-ubi-base"
     version = "18.1000"
 
   [[metadata.dependencies]]
     id = "node"
     name = "Ubi Node Extension"
-    stacks = ["ubi8-paketo"]
-    source = "quay.io/midawson/ubi8-paketo-run-nodejs-16"
+    stacks = ["io.buildpacks.stacks.ubi8"]
+    source = "paketocommunity/run-nodejs-18-ubi-base"
     version = "16.1000"
