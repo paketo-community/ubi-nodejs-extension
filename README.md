@@ -3,7 +3,7 @@
 The Node.js Extension for
 [ubi](https://www.redhat.com/en/blog/introducing-red-hat-universal-base-image)
 allows builders to be created which build Node.js applications on top of
-Red Hat's Node. Node.js ubi containers. For example
+Red Hat's Node.js ubi containers. For example
 [ubi8/nodejs-16-minimal](https://catalog.redhat.com/software/containers/ubi8/nodejs-16-minimal/615aefd53f6014fa45ae1ae2).
 
 ## Integration
@@ -70,32 +70,10 @@ ubi extension.
        version = "0.0.1"
 
    [stack]
-     id = "ubi8-paketo"
-     build-image = "quay.io/midawson/ubi8-paketo-build"
-     run-image = "quay.io/midawson/ubi8-paketo-run"
+     id = "io.buildpacks.stacks.ubi8"
+     build-image = "paketocommunity/build-ubi-base"
+     run-image = "paketocommunity/run-ubi-base"
    ```
-
-   A stack requires a build-image and a run-image and the extension
-   requires a run image for each supported Node.js stream. We have made the
-   following images available for initial testing while we work on
-   building out the infrastruture to regularly build the required images:
-
-   - quay.io/midawson/ubi8-paketo-build
-   - quay.io/midawson/ubi8-paketo-run
-   - quay.io/midawson/ubi8-paketo-run-nodejs-18
-   - quay.io/midawson/ubi8-paketo-run-nodejs-16
-
-   The `ubi8-paketo-run-nodejs-XX` are simply the ubi8/nodejs-XX-minimal
-   images with the additional metadata and user/groups required by the
-   buildpacks spefication added. Overtime we plan to incorporate the
-   required chagnes into the ubi8/nodejs-XX-minimal images themselves.
-
-   The `ubi8-paketo-build` and `ubit-pakto-run` images are simply
-   the `ubi8/ubi` and `ubi8/ubi-minimal` images with the additional
-   metadata and user/groups required by the buildpacks spefication added.
-   There is an effort to remove the concept of stacks and, therefore,
-   over time the need for these containers with additional metadata will
-   fade.
 
    To create the builder:
 
@@ -124,7 +102,7 @@ ubi extension.
 
 ubi only supports the latest version of each Node.js stream
 currently available in the ubi version. At the time of writing
-ubi8 supports the Node.js 14, 16, and 18 streams. For example,
+ubi8 supports the Node.js 16, and 18 streams. For example,
 if the latest Node.js version for the 16.x stream in ubi8 is 16.10.1
 then that is your only option when requesting the Node.js 16.x stream.
 Therefore we suggest that you request the Node.js version such that it
