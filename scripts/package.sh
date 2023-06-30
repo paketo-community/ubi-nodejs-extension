@@ -131,9 +131,19 @@ function buildpackage::create() {
 
   util::print::title "Packaging buildpack...${output}"
 
+  cwd=$(pwd)
+  cd ${BUILD_DIR}
+  mkdir cnbdir
+  cd cnbdir
+  cp ../buildpack.tgz .
+  tar -xvf buildpack.tgz
+  rm buildpack.tgz
+
   pack \
     extension package "${output}" \
     --format file
+
+  cd $cwd
 }
 
 main "${@:-}"
