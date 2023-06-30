@@ -1,8 +1,8 @@
 api = "0.7"
 
 [extension]
-id = "redhat-runtimes/nodejs"
-name = "RedHat Runtimes Node.js Dependency Extension"
+id = "paketo-community/ubi-nodejs-extension"
+name = "Ubi Node.js Extension"
 version = "0.0.1"
 description = "This extension installs the appropriate nodejs runtime via dnf"
 

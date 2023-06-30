@@ -60,13 +60,13 @@ ubi extension.
        version = "1.4.0"
 
    [[extensions]]
-     id = "redhat-runtimes/nodejs"
+     id = "paketo-community/ubi-nodejs-extension"
      version = "0.0.1"
      uri = "file:///home/user1/paketo/ubi-nodejs-extension"
 
    [[order-extensions]]
      [[order-extensions.group]]
-       id = "redhat-runtimes/nodejs"
+       id = "paketo-community/ubi-nodejs-extension"
        version = "0.0.1"
 
    [stack]
