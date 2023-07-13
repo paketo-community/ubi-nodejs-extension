@@ -67,20 +67,16 @@ function main() {
     unset IFS
   fi
 
-  #[0]="index.docker.io/paketobuildpacks/builder:buildpackless-base"
-  #[1]="index.docker.io/paketobuildpacks/builder-jammy-buildpackless-base:latest"
   # shellcheck disable=SC2068
   images::pull ${builderArray[@]}
 
   local testout
   testout=$(mktemp)
-  # [0]="index.docker.io/paketobuildpacks/builder:buildpackless-base"
-  # [1]="index.docker.io/paketobuildpacks/builder-jammy-buildpackless-base:latest"
 
   for builder in "${builderArray[@]}"; do
     util::print::title "Setting default pack builder image..."
     pack config default-builder "${builder}"
-    # testout="/tmp/tmp.WPLq4t2rbg"'
+
     tests::run "${builder}" "${testout}"
   done
 
@@ -126,17 +122,12 @@ function tools::install() {
 function images::pull() {
   for builder in "${@}"; do
     util::print::title "Pulling builder image ${builder}..."
-    # builder="index.docker.io/paketobuildpacks/builder-jammy-buildpackless-base:latest"'
     docker pull "${builder}"
-    # run_image="index.docker.io/paketobuildpacks/run:base-cnb"'
-    # run_image="index.docker.io/paketobuildpacks/run-jammy-base:latest"'
     local run_image lifecycle_image
     run_image="$(
       pack inspect-builder "${builder}" --output json |
         jq -r '.remote_info.run_images[0].name'
     )"
-    # lifecycle_image="index.docker.io/buildpacksio/lifecycle:0.16.0"'
-    #lifecycle_image="index.docker.io/buildpacksio/lifecycle:0.16.0"'
     lifecycle_image="index.docker.io/buildpacksio/lifecycle:$(
       pack inspect-builder "${builder}" --output json |
         jq -r '.remote_info.lifecycle.version'
