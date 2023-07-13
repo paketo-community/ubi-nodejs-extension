@@ -475,7 +475,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				"      BP_NODE_VERSION -> \"~14\"",
 				"      <unknown>       -> \"\"",
 				"",
-				"failed to satisfy \"node\" dependency version constraint \"~14\": no compatible versions on \"ubi8-paketo\" stack. Supported versions are: [18.1000, 16.1000]",
+				"failed to satisfy \"node\" dependency version constraint \"~14\": no compatible versions on \"io.buildpacks.stacks.ubi8\" stack. Supported versions are: [18.1000, 16.1000]",
 			))
 		})
 	})
