@@ -11,6 +11,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/paketo-buildpacks/packit/v2"
 	"github.com/paketo-buildpacks/packit/v2/draft"
+	"github.com/paketo-buildpacks/libnodejs"
 	postal "github.com/paketo-buildpacks/packit/v2/postal"
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
@@ -49,18 +50,8 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter) packit
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
 		logger.Process("Resolving Node Engine version")
 
-		// likely move this out to main
 		entryResolver := draft.NewPlanner()
-
-		// from nodejs-engine buildpack, keep in sync
-		priorities := []interface{}{
-			"BP_NODE_VERSION",
-			"package.json",
-			".nvmrc",
-			".node-version",
-		}
-
-		entry, allEntries := entryResolver.Resolve("node", context.Plan.Entries, priorities)
+		entry, allEntries := libnodejs.ResolveNodeVersion(entryResolver.Resolve, context.Plan);
 		if entry.Name == "" {
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Node.js no longer requested by build plan")
 		}
