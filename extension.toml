@@ -23,5 +23,5 @@ description = "This extension installs the appropriate nodejs runtime via dnf"
     id = "node"
     name = "Ubi Node Extension"
     stacks = ["io.buildpacks.stacks.ubi8"]
-    source = "paketocommunity/run-nodejs-18-ubi-base"
+    source = "paketocommunity/run-nodejs-16-ubi-base"
     version = "16.1000"

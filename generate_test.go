@@ -10,13 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
-	"github.com/paketo-community/ubi-nodejs-extension/fakes"
 	. "github.com/onsi/gomega"
+	"github.com/paketo-buildpacks/packit/cargo"
 	"github.com/paketo-buildpacks/packit/v2"
+	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
 	"github.com/sclevine/spec"
 
-	"github.com/paketo-buildpacks/packit/v2/cargo"
+	"github.com/paketo-buildpacks/packit/v2/scribe"
 
 	"github.com/BurntSushi/toml"
 	postal "github.com/paketo-buildpacks/packit/v2/postal"
@@ -103,14 +103,23 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		generateResult       packit.GenerateResult
 		err                  error
 		cnbDir               string
-		dependencyManager    *fakes.DependencyManager
 		BuildDockerfileProps = ubinodejsextension.BuildDockerfileProps{
 			CNB_USER_ID:  ubinodejsextension.CNB_USER_ID,
 			CNB_GROUP_ID: ubinodejsextension.CNB_GROUP_ID,
 			CNB_STACK_ID: "",
 			PACKAGES:     ubinodejsextension.PACKAGES,
 		}
+		generate packit.GenerateFunc
+		buffer   *bytes.Buffer
 	)
+
+	it.Before(func() {
+		buffer = bytes.NewBuffer(nil)
+		logger := scribe.NewEmitter(buffer)
+		dependencyManager := postal.NewService(cargo.NewTransport())
+		generate = ubinodejsextension.Generate(dependencyManager, logger)
+
+	})
 
 	context("Generate called with NO node in buildplan", func() {
 		it.Before(func() {
@@ -127,11 +136,13 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		it("Node no longer requested in buildplan", func() {
-			dependencyManager = &fakes.DependencyManager{}
-			dependencyManager.ResolveCall.Returns.Dependency = postal.Dependency{Name: "Node Engine", ID: "node", Version: "16.5.1"}
+		it.After(func() {
+			Expect(os.RemoveAll(workingDir)).To(Succeed())
+		})
 
-			generateResult, err = ubinodejsextension.Generate(dependencyManager)(packit.GenerateContext{
+		it("Node no longer requested in buildplan", func() {
+
+			generateResult, err = generate(packit.GenerateContext{
 				WorkingDir: workingDir,
 				Plan: packit.BuildpackPlan{
 					Entries: []packit.BuildpackPlanEntry{},
@@ -161,6 +172,10 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 		})
 
+		it.After(func() {
+			Expect(os.RemoveAll(workingDir)).To(Succeed())
+		})
+
 		it("Specific version of node requested", func() {
 
 			extensionToml, _ := readExtensionTomlTemplateFile()
@@ -168,8 +183,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			cnbDir, err = os.MkdirTemp("", "cnb")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
-
-			dependencyManager := postal.NewService(cargo.NewTransport())
 
 			versionTests := []struct {
 				Name                                 string
@@ -314,7 +327,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			for _, tt := range versionTests {
 
-				generateResult, err = ubinodejsextension.Generate(dependencyManager)(packit.GenerateContext{
+				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
 					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
@@ -352,8 +365,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			cnbDir, err = os.MkdirTemp("", "cnb")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
-
-			dependencyManager := postal.NewService(cargo.NewTransport())
 
 			versionTests := []struct {
 				Name                                 string
@@ -402,7 +413,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			for _, tt := range versionTests {
 
-				generateResult, err = ubinodejsextension.Generate(dependencyManager)(packit.GenerateContext{
+				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
 					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
@@ -441,8 +452,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
 
-			dependencyManager := postal.NewService(cargo.NewTransport())
-
 			versionTests := []struct {
 				Name                                 string
 				Metadata                             map[string]interface{}
@@ -478,7 +487,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			for _, tt := range versionTests {
 
-				generateResult, err = ubinodejsextension.Generate(dependencyManager)(packit.GenerateContext{
+				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
 					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
@@ -516,8 +525,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			cnbDir, err = os.MkdirTemp("", "cnb")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
-
-			dependencyManager := postal.NewService(cargo.NewTransport())
 
 			versionTests := []struct {
 				Name     string
@@ -576,7 +583,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			for _, tt := range versionTests {
 
-				generateResult, err = ubinodejsextension.Generate(dependencyManager)(packit.GenerateContext{
+				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
 					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
@@ -615,6 +622,10 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		it.After(func() {
+			Expect(os.RemoveAll(workingDir)).To(Succeed())
+		})
+
 		it("Should respect the priorities and return the proper Node.js version", func() {
 
 			extensionToml, _ := readExtensionTomlTemplateFile()
@@ -622,8 +633,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			cnbDir, err = os.MkdirTemp("", "cnb")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
-
-			dependencyManager := postal.NewService(cargo.NewTransport())
 
 			entriesTests := []struct {
 				Entries            []packit.BuildpackPlanEntry
@@ -686,7 +695,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			for _, tt := range entriesTests {
 
-				generateResult, err = ubinodejsextension.Generate(dependencyManager)(packit.GenerateContext{
+				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
 					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
@@ -715,8 +724,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
 
-			dependencyManager := postal.NewService(cargo.NewTransport())
-
 			entriesTests := []struct {
 				Entries []packit.BuildpackPlanEntry
 			}{
@@ -727,7 +734,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			for _, tt := range entriesTests {
 
-				generateResult, err = ubinodejsextension.Generate(dependencyManager)(packit.GenerateContext{
+				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
 					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
