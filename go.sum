@@ -1656,8 +1656,8 @@ github.com/opencontainers/selinux v1.10.0/go.mod h1:2i0OySw99QjzBBQByd1Gr9gSjvuh
 github.com/opencontainers/selinux v1.10.1/go.mod h1:2i0OySw99QjzBBQByd1Gr9gSjvuho1lHsJxIJ3gGbJI=
 github.com/opencontainers/selinux v1.11.0/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
-github.com/paketo-buildpacks/libnodejs v0.0.2 h1:3pPWg0b2uzaPkKNqVRT3dCGJ6XheuMZpJw8mBp/bYLc=
-github.com/paketo-buildpacks/libnodejs v0.0.2/go.mod h1:D69iwG2Uu9Y0VHOrs2xDk9Oy91qMo9j+gLaRwP2jINw=
+github.com/paketo-buildpacks/libnodejs v0.1.0 h1:MaZXwK5QOn2pwrVya2i2PogQDo8n8pFefCvZIjGHo2U=
+github.com/paketo-buildpacks/libnodejs v0.1.0/go.mod h1:6zYvjp6d0mw2Sw/3ITF1CTk7dLQigpI37QGoG2IFeRE=
 github.com/paketo-buildpacks/libreload-packit v0.0.1 h1:K1HhNAqBSzRpefwGOcvdchZwyeNTgNJL9SC7V4paYt8=
 github.com/paketo-buildpacks/libreload-packit v0.0.1/go.mod h1:ZWE3U94Z18yJk8Pc1mP852l9phQsrsZ+An2U98g0rWw=
 github.com/paketo-buildpacks/node-start v1.0.11 h1:vg9ElyYhyxj4m5m6yEWTjKPS/9VVtUoQKamY+TuVJOc=
