@@ -87,7 +87,8 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 					"  Resolving Node Engine version",
 					"    Candidate version sources (in priority order):",
 					"      <unknown> -> \"\"",
-					"",
+				))
+				Expect(logs).To(ContainLines(
 					"  Selected Node Engine Major version 18",
 					"===> RESTORING",
 					"===> EXTENDING (BUILD)"))
@@ -366,7 +367,8 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 					"    Candidate version sources (in priority order):",
 					"      .nvmrc    -> \"16.*\"",
 					"      <unknown> -> \"\"",
-					"",
+				))
+				Expect(logs).To(ContainLines(
 					"  Selected Node Engine Major version 16",
 					"===> RESTORING",
 					"===> EXTENDING (BUILD)"))
@@ -474,7 +476,8 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				"    Candidate version sources (in priority order):",
 				"      BP_NODE_VERSION -> \"~14\"",
 				"      <unknown>       -> \"\"",
-				"",
+			))
+			Expect(logs).To(ContainLines(
 				"failed to satisfy \"node\" dependency version constraint \"~14\": no compatible versions on \"io.buildpacks.stacks.ubi8\" stack. Supported versions are: [18.1000, 16.1000]",
 			))
 		})

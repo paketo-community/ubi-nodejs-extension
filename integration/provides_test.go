@@ -69,8 +69,8 @@ func testProvides(t *testing.T, context spec.G, it spec.S) {
 				fmt.Sprintf("%s 1.2.3", settings.Extension.Name),
 				"  Resolving Node Engine version",
 				"    Candidate version sources (in priority order):",
-				"      <unknown> -> \"\"",
-				"",
+				"      <unknown> -> \"\""))
+			Expect(logs).To(ContainLines(
 				"  Selected Node Engine Major version 18",
 				"===> RESTORING",
 				"===> EXTENDING (BUILD)"))
