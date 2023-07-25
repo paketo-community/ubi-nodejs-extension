@@ -60,8 +60,8 @@ func TestIntegration(t *testing.T) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(file.Close()).To(Succeed())
 
-	settings.Buildpack.ID = "paketo-buildpacks/node-engine"
-	settings.Buildpack.Name = "Paketo Buildpack for Node Engine"
+	// settings.Buildpack.ID = "paketo-buildpacks/node-engine"
+	// settings.Buildpack.Name = "Paketo Buildpack for Node Engine"
 
 	file, err = os.Open("../integration.json")
 	Expect(err).NotTo(HaveOccurred())
