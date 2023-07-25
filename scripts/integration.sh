@@ -12,9 +12,6 @@ source "${PROGDIR}/.util/tools.sh"
 # shellcheck source=SCRIPTDIR/.util/print.sh
 source "${PROGDIR}/.util/print.sh"
 
-# shellcheck source=SCRIPTDIR/.util/git.sh
-source "${PROGDIR}/.util/git.sh"
-
 # shellcheck source=SCRIPTDIR/.util/builders.sh
 source "${PROGDIR}/.util/builders.sh"
 
@@ -23,11 +20,6 @@ function main() {
   builderArray=()
   while [[ "${#}" != 0 ]]; do
     case "${1}" in
-    --use-token | -t)
-      shift 1
-      token::fetch
-      ;;
-
     --help | -h)
       shift 1
       usage
@@ -54,7 +46,7 @@ function main() {
     util::print::warn "** WARNING  No Integration tests **"
   fi
 
-  tools::install "${GIT_TOKEN:-}"
+  tools::install
 
   if [ ${#builderArray[@]} -eq 0 ]; then
     util::print::title "No builders provided. Finding builders in integration.json..."
@@ -92,23 +84,18 @@ Runs the integration test suite.
 
 OPTIONS
   --help           -h         prints the command usage
-  --use-token      -t         use GIT_TOKEN from lastpass
   --builder <name> -b <name>  sets the name of the builder(s) that are pulled / used for testing.
                               Defaults to "builders" array in integration.json, if present.
 USAGE
 }
 
 function tools::install() {
-  local token
-  token="${1}"
 
   util::tools::pack::install \
-    --directory "${BUILDPACKDIR}/.bin" \
-    --token "${token}"
+    --directory "${BUILDPACKDIR}/.bin"
 
   util::tools::jam::install \
-    --directory "${BUILDPACKDIR}/.bin" \
-    --token "${token}"
+    --directory "${BUILDPACKDIR}/.bin"
 
   util::tools::create-package::install \
     --directory "${BUILDPACKDIR}/.bin"
@@ -140,10 +127,6 @@ function images::pull() {
   done
 }
 
-function token::fetch() {
-  GIT_TOKEN="$(util::git::token::fetch)"
-  export GIT_TOKEN
-}
 
 function tests::run() {
   util::print::title "Run Buildpack Runtime Integration Tests"
