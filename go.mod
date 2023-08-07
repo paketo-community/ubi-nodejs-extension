@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/onsi/gomega v1.27.10
 	github.com/paketo-buildpacks/libnodejs v0.2.0
-	github.com/paketo-buildpacks/node-start v1.0.11
+	github.com/paketo-buildpacks/node-start v1.1.0
 	github.com/paketo-buildpacks/packit/v2 v2.11.0
 	github.com/sclevine/spec v1.4.0
 )
@@ -18,7 +18,7 @@ require (
 	github.com/paketo-buildpacks/libreload-packit v0.0.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
-	golang.org/x/net v0.12.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
