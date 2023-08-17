@@ -12,6 +12,7 @@ import (
 	"github.com/paketo-buildpacks/packit/v2"
 	"github.com/paketo-buildpacks/packit/v2/draft"
 	postal "github.com/paketo-buildpacks/packit/v2/postal"
+	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
 
 var PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which"
@@ -43,8 +44,10 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
-func Generate(dependencyManager DependencyManager) packit.GenerateFunc {
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
+		logger.Title("%s %s", context.Info.Name, context.Info.Version)
+		logger.Process("Resolving Node Engine version")
 
 		// likely move this out to main
 		entryResolver := draft.NewPlanner()
@@ -57,11 +60,12 @@ func Generate(dependencyManager DependencyManager) packit.GenerateFunc {
 			".node-version",
 		}
 
-		entry, _ := entryResolver.Resolve("node", context.Plan.Entries, priorities)
+		entry, allEntries := entryResolver.Resolve("node", context.Plan.Entries, priorities)
 		if entry.Name == "" {
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Node.js no longer requested by build plan")
 		}
 
+		logger.Candidates(allEntries)
 		version, _ := entry.Metadata["version"].(string)
 		extensionFilePath := filepath.Join(context.CNBPath, "extension.toml")
 		dependency, err := dependencyManager.Resolve(extensionFilePath, entry.Name, version, context.Stack)
@@ -72,6 +76,8 @@ func Generate(dependencyManager DependencyManager) packit.GenerateFunc {
 		sVersion, _ := semver.NewVersion(dependency.Version)
 
 		NODEJS_VERSION := sVersion.Major()
+
+		logger.Process("Selected Node Engine Major version %d", NODEJS_VERSION)
 
 		// These variables have to be fetched from the env
 		CNB_STACK_ID := os.Getenv("CNB_STACK_ID")

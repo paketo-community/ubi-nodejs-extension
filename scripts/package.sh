@@ -14,8 +14,6 @@ source "${ROOT_DIR}/scripts/.util/tools.sh"
 source "${ROOT_DIR}/scripts/.util/print.sh"
 
 function main {
-  local version output token
-  token=""
 
   while [[ "${#}" != 0 ]]; do
     case "${1}" in
@@ -58,7 +56,7 @@ function main {
 
   repo::prepare
 
-  tools::install "${token}"
+  tools::install
 
   buildpack::archive "${version}"
   buildpackage::create "${output}"
@@ -74,7 +72,6 @@ OPTIONS
   --help               -h            prints the command usage
   --version <version>  -v <version>  specifies the version number to use when packaging the buildpack
   --output <output>    -o <output>   location to output the packaged buildpackage artifact (default: ${ROOT_DIR}/build/buildpackage.cnb)
-  --token <token>                    Token used to download assets from GitHub (e.g. jam, pack, etc) (optional)
 USAGE
 }
 
@@ -90,8 +87,6 @@ function repo::prepare() {
 }
 
 function tools::install() {
-  local token
-  token="${1}"
 
   util::tools::pack::install \
     --directory "${BIN_DIR}"
