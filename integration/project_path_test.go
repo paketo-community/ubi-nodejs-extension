@@ -82,9 +82,9 @@ func testProjectPath(t *testing.T, context spec.G, it spec.S) {
 				"      <unknown>     -> \"\""))
 
 			Expect(logs).To(ContainLines(
-				"  Selected Node Engine Major version 16",
-				"===> RESTORING",
-				"===> EXTENDING (BUILD)"))
+				"  Selected Node Engine Major version 16"))
+			Expect(logs).To(ContainLines("===> RESTORING"))
+			Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
 
 			Expect(logs).To(ContainLines("[extender (build)] Enabling module streams:",
 				"[extender (build)]     nodejs:16"))

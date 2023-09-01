@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/paketo-buildpacks/occam"
@@ -75,11 +76,10 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 
 		Eventually(container).Should(Serve(ContainSubstring("NodeOptions: --no-warnings --max_old_space_size=96")).OnPort(8080))
 
-		fmt.Println(logs)
 		Expect(logs).To(ContainLines(
 			`[extender (build)]   Configuring launch environment`,
 			`[extender (build)]     NODE_ENV        -> "production"`,
-			`[extender (build)]     NODE_HOME       -> "/layers/paketo-buildpacks_node-engine/node"`,
+			fmt.Sprintf(`[extender (build)]     NODE_HOME       -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
 			`[extender (build)]     NODE_OPTIONS    -> "--use-openssl-ca"`,
 			`[extender (build)]     NODE_VERBOSE    -> "false"`,
 			`[extender (build)]     OPTIMIZE_MEMORY -> "true"`,
