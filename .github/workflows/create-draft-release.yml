@@ -37,10 +37,32 @@ jobs:
         printf "Output: %s\n" "${builders}"
         printf "builders=%s\n" "${builders}" >> "$GITHUB_OUTPUT"
 
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-22.04
+    needs: unit
+    strategy:
+      matrix:
+        builder: ${{ fromJSON(needs.unit.outputs.builders) }}
+      fail-fast: false  # don't cancel all test jobs when one fails
+    steps:
+    - name: Setup Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.20.x
+    - name: Checkout
+      uses: actions/checkout@v3
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/* || true
+    - name: Run Integration Tests
+      run: ./scripts/integration.sh --use-token --builder ${{ matrix.builder }}
+      env:
+        GIT_TOKEN: ${{ github.token }}
+        TMPDIR: "${{ runner.temp }}"
+
   release:
     name: Release
     runs-on: ubuntu-22.04
-    needs: unit
+    needs: integration
     steps:
     - name: Setup Go
       uses: actions/setup-go@v3
@@ -75,8 +97,10 @@ jobs:
       run: ./scripts/package.sh --version "${{ steps.tag.outputs.tag }}"
     - name: Create Release Notes
       id: create-release-notes
-      run: |
-        echo "release_body=No release notes yet - working on it" >> "$GITHUB_OUTPUT"
+      uses: paketo-buildpacks/github-config/actions/release/notes@main
+      with:
+        repo: ${{ github.repository }}
+        token: ${{ secrets.PAKETO_BOT_GITHUB_TOKEN }}
     - name: Create Release
       uses: paketo-buildpacks/github-config/actions/release/create@main
       with:
@@ -104,7 +128,7 @@ jobs:
   failure:
     name: Alert on Failure
     runs-on: ubuntu-22.04
-    needs: [ unit, release ]
+    needs: [ unit, integration, release ]
     if: ${{ always() && needs.unit.result == 'failure' || needs.integration.result == 'failure' || needs.release.result == 'failure' }}
     steps:
     - name: File Failure Alert Issue
