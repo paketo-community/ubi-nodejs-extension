@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/onsi/gomega v1.27.10
 	github.com/paketo-buildpacks/libnodejs v0.2.0
-	github.com/paketo-buildpacks/node-start v1.1.1
+	github.com/paketo-buildpacks/node-start v1.1.2
 	github.com/paketo-buildpacks/packit/v2 v2.11.0
 	github.com/sclevine/spec v1.4.0
 )
