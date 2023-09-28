@@ -1,0 +1,5 @@
+CODEOWNERS
+.github/workflows/update-dependencies.yml
+.github/workflows/create-draft-release.yml
+scripts/package.sh
+scripts/build.sh

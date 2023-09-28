@@ -12,6 +12,9 @@ source "${PROGDIR}/.util/tools.sh"
 # shellcheck source=SCRIPTDIR/.util/print.sh
 source "${PROGDIR}/.util/print.sh"
 
+# shellcheck source=SCRIPTDIR/.util/git.sh
+source "${PROGDIR}/.util/git.sh"
+
 # shellcheck source=SCRIPTDIR/.util/builders.sh
 source "${PROGDIR}/.util/builders.sh"
 
@@ -20,6 +23,11 @@ function main() {
   builderArray=()
   while [[ "${#}" != 0 ]]; do
     case "${1}" in
+    --use-token|-t)
+        shift 1
+        token::fetch
+        ;;
+
     --help | -h)
       shift 1
       usage
@@ -127,6 +135,10 @@ function images::pull() {
   done
 }
 
+function token::fetch() {
+  GIT_TOKEN="$(util::git::token::fetch)"
+  export GIT_TOKEN
+}
 
 function tests::run() {
   util::print::title "Run Buildpack Runtime Integration Tests"

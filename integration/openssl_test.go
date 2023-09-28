@@ -60,7 +60,6 @@ func testOpenSSL(t *testing.T, context spec.G, it spec.S) {
 				)
 
 				image, logs, err = pack.WithNoColor().Build.
-					WithPullPolicy("never").
 					WithExtensions(
 						settings.Buildpacks.NodeExtension.Online,
 					).
@@ -104,7 +103,6 @@ func testOpenSSL(t *testing.T, context spec.G, it spec.S) {
 				)
 
 				image, logs, err = pack.WithNoColor().Build.
-					WithPullPolicy("never").
 					WithExtensions(
 						settings.Buildpacks.NodeExtension.Online,
 					).
