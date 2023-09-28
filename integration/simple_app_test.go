@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/paketo-buildpacks/occam"
@@ -88,9 +89,9 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 					"      <unknown> -> \"\"",
 				))
 				Expect(logs).To(ContainLines(
-					"  Selected Node Engine Major version 18",
-					"===> RESTORING",
-					"===> EXTENDING (BUILD)"))
+					"  Selected Node Engine Major version 18"))
+				Expect(logs).To(ContainLines("===> RESTORING"))
+				Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
 				Expect(logs).To(ContainLines(
 					"[extender (build)] Enabling module streams:",
 					"[extender (build)]     nodejs:18"))
@@ -98,31 +99,27 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				// SBOM is not supported at the moment from UBI image
 				// therefore there are no available logs to test/validate
 
-				//Below commented code, will work only with the patched version of node-engine
-				//due to node-engine exits early as UBI image already provides node, therefore
-				//does not set any env variables.
+				Expect(logs).To(ContainLines(
+					"[extender (build)]   Configuring build environment",
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]   Configuring build environment",
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
+				Expect(logs).To(ContainLines(
+					`[extender (build)]   Configuring launch environment`,
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	`[extender (build)]   Configuring launch environment`,
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
-
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]     Writing exec.d/0-optimize-memory",
-				// 	"[extender (build)]       Calculates available memory based on container limits at launch time.",
-				// 	"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
-				// ))
+				Expect(logs).To(ContainLines(
+					"[extender (build)]     Writing exec.d/0-optimize-memory",
+					"[extender (build)]       Calculates available memory based on container limits at launch time.",
+					"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
+				))
 
 				container, err = docker.Container.Run.
 					WithCommand("echo NODE_ENV=$NODE_ENV && node server.js").
@@ -140,13 +137,13 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(content)).To(ContainSubstring("hello world"))
 
-				// Eventually(func() string {
-				// 	cLogs, err := docker.Container.Logs.Execute(container.ID)
-				// 	Expect(err).NotTo(HaveOccurred())
-				// 	return cLogs.String()
-				// }).Should(
-				// 	ContainSubstring("NODE_ENV=production"),
-				// )
+				Eventually(func() string {
+					cLogs, err := docker.Container.Logs.Execute(container.ID)
+					Expect(err).NotTo(HaveOccurred())
+					return cLogs.String()
+				}).Should(
+					ContainSubstring("NODE_ENV=production"),
+				)
 			})
 		})
 
@@ -178,31 +175,27 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
 
-				//Below commented code, will work only with the patched version of node-engine
-				//due to node-engine exits early as UBI image already provides node, therefore
-				//does not set any env variables.
+				Expect(logs).To(ContainLines(
+					"[extender (build)]   Configuring build environment",
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]   Configuring build environment",
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
+				Expect(logs).To(ContainLines(
+					`[extender (build)]   Configuring launch environment`,
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	`[extender (build)]   Configuring launch environment`,
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
-
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]     Writing exec.d/0-optimize-memory",
-				// 	"[extender (build)]       Calculates available memory based on container limits at launch time.",
-				// 	"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
-				// ))
+				Expect(logs).To(ContainLines(
+					"[extender (build)]     Writing exec.d/0-optimize-memory",
+					"[extender (build)]       Calculates available memory based on container limits at launch time.",
+					"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
+				))
 
 				container, err = docker.Container.Run.
 					WithCommand("echo ENV=$NODE_ENV && echo VERBOSE=$NODE_VERBOSE && node server.js").
@@ -220,16 +213,16 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(content)).To(ContainSubstring("hello world"))
 
-				// Eventually(func() string {
-				// 	cLogs, err := docker.Container.Logs.Execute(container.ID)
-				// 	Expect(err).NotTo(HaveOccurred())
-				// 	return cLogs.String()
-				// }).Should(
-				// 	And(
-				// 		ContainSubstring("ENV=production"),
-				// 		ContainSubstring("VERBOSE=false"),
-				// 	),
-				// )
+				Eventually(func() string {
+					cLogs, err := docker.Container.Logs.Execute(container.ID)
+					Expect(err).NotTo(HaveOccurred())
+					return cLogs.String()
+				}).Should(
+					And(
+						ContainSubstring("ENV=production"),
+						ContainSubstring("VERBOSE=false"),
+					),
+				)
 			})
 		})
 
@@ -266,42 +259,38 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 					"  Resolving Node Engine version",
 					"    Candidate version sources (in priority order):",
 					"      .node-version -> \"16.*\"",
-					"      <unknown>     -> \"\"",
-					"",
-					"  Selected Node Engine Major version 16",
-					"===> RESTORING",
-					"===> EXTENDING (BUILD)"))
+					"      <unknown>     -> \"\""))
+				Expect(logs).To(ContainLines(
+					"  Selected Node Engine Major version 16"))
+				Expect(logs).To(ContainLines("===> RESTORING"))
+				Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
 				Expect(logs).To(ContainLines("[extender (build)] Enabling module streams:",
 					"[extender (build)]     nodejs:16"))
 
 				// SBOM is not supported at the moment from UBI image
 				// therefore there are no available logs to test/validate
 
-				//Below commented code, will work only with the patched version of node-engine
-				//due to node-engine exits early as UBI image already provides node, therefore
-				//does not set any env variables.
+				Expect(logs).To(ContainLines(
+					"[extender (build)]   Configuring build environment",
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]   Configuring build environment",
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
+				Expect(logs).To(ContainLines(
+					`[extender (build)]   Configuring launch environment`,
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	`[extender (build)]   Configuring launch environment`,
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
-
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]     Writing exec.d/0-optimize-memory",
-				// 	"[extender (build)]       Calculates available memory based on container limits at launch time.",
-				// 	"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
-				// ))
+				Expect(logs).To(ContainLines(
+					"[extender (build)]     Writing exec.d/0-optimize-memory",
+					"[extender (build)]       Calculates available memory based on container limits at launch time.",
+					"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
+				))
 
 				container, err = docker.Container.Run.
 					WithCommand("echo NODE_ENV=$NODE_ENV && node server.js").
@@ -319,13 +308,13 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(content)).To(ContainSubstring("hello world"))
 
-				// Eventually(func() string {
-				// 	cLogs, err := docker.Container.Logs.Execute(container.ID)
-				// 	Expect(err).NotTo(HaveOccurred())
-				// 	return cLogs.String()
-				// }).Should(
-				// 	ContainSubstring("NODE_ENV=production"),
-				// )
+				Eventually(func() string {
+					cLogs, err := docker.Container.Logs.Execute(container.ID)
+					Expect(err).NotTo(HaveOccurred())
+					return cLogs.String()
+				}).Should(
+					ContainSubstring("NODE_ENV=production"),
+				)
 			})
 		})
 
@@ -364,41 +353,36 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 					"      .nvmrc    -> \"16.*\"",
 					"      <unknown> -> \"\"",
 				))
-				Expect(logs).To(ContainLines(
-					"  Selected Node Engine Major version 16",
-					"===> RESTORING",
-					"===> EXTENDING (BUILD)"))
-				Expect(logs).To(ContainLines("[extender (build)] Enabling module streams:",
-					"[extender (build)]     nodejs:16"))
+				Expect(logs).To(ContainLines("  Selected Node Engine Major version 16"))
+				Expect(logs).To(ContainLines("===> RESTORING"))
+				Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
+				Expect(logs).To(ContainLines("[extender (build)] Enabling module streams:"))
+				Expect(logs).To(ContainLines("[extender (build)]     nodejs:16"))
 
 				// SBOM is not supported at the moment from UBI image
 				// therefore there are no available logs to test/validate
 
-				//Below commented code, will work only with the patched version of node-engine
-				//due to node-engine exits early as UBI image already provides node, therefore
-				//does not set any env variables.
+				Expect(logs).To(ContainLines(
+					"[extender (build)]   Configuring build environment",
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]   Configuring build environment",
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
+				Expect(logs).To(ContainLines(
+					`[extender (build)]   Configuring launch environment`,
+					`[extender (build)]     NODE_ENV     -> "production"`,
+					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+					`[extender (build)]     NODE_VERBOSE -> "false"`,
+				))
 
-				// Expect(logs).To(ContainLines(
-				// 	`[extender (build)]   Configuring launch environment`,
-				// 	`[extender (build)]     NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-				// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-				// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-				// ))
-
-				// Expect(logs).To(ContainLines(
-				// 	"[extender (build)]     Writing exec.d/0-optimize-memory",
-				// 	"[extender (build)]       Calculates available memory based on container limits at launch time.",
-				// 	"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
-				// ))
+				Expect(logs).To(ContainLines(
+					"[extender (build)]     Writing exec.d/0-optimize-memory",
+					"[extender (build)]       Calculates available memory based on container limits at launch time.",
+					"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
+				))
 
 				container, err = docker.Container.Run.
 					WithCommand("echo NODE_ENV=$NODE_ENV && node server.js").
@@ -416,13 +400,13 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(content)).To(ContainSubstring("hello world"))
 
-				// Eventually(func() string {
-				// 	cLogs, err := docker.Container.Logs.Execute(container.ID)
-				// 	Expect(err).NotTo(HaveOccurred())
-				// 	return cLogs.String()
-				// }).Should(
-				// 	ContainSubstring("NODE_ENV=production"),
-				// )
+				Eventually(func() string {
+					cLogs, err := docker.Container.Logs.Execute(container.ID)
+					Expect(err).NotTo(HaveOccurred())
+					return cLogs.String()
+				}).Should(
+					ContainSubstring("NODE_ENV=production"),
+				)
 			})
 		})
 	})

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/paketo-buildpacks/occam"
@@ -69,10 +70,9 @@ func testProvides(t *testing.T, context spec.G, it spec.S) {
 				"  Resolving Node Engine version",
 				"    Candidate version sources (in priority order):",
 				"      <unknown> -> \"\""))
-			Expect(logs).To(ContainLines(
-				"  Selected Node Engine Major version 18",
-				"===> RESTORING",
-				"===> EXTENDING (BUILD)"))
+			Expect(logs).To(ContainLines("  Selected Node Engine Major version 18"))
+			Expect(logs).To(ContainLines("===> RESTORING"))
+			Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
 			Expect(logs).To(ContainLines(
 				"[extender (build)] Enabling module streams:",
 				"[extender (build)]     nodejs:18"))
@@ -80,31 +80,27 @@ func testProvides(t *testing.T, context spec.G, it spec.S) {
 			// SBOM is not supported at the moment from UBI image
 			// therefore there are no available logs to test/validate
 
-			//Below commented code, will work only with the patched version of node-engine
-			//due to node-engine exits early as UBI image already provides node, therefore
-			//does not set any env variables.
+			Expect(logs).To(ContainLines(
+				"[extender (build)]   Configuring build environment",
+				`[extender (build)]     NODE_ENV     -> "production"`,
+				fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+				`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+				`[extender (build)]     NODE_VERBOSE -> "false"`,
+			))
 
-			// Expect(logs).To(ContainLines(
-			// 	"[extender (build)]   Configuring build environment",
-			// 	`[extender (build)]     NODE_ENV     -> "production"`,
-			// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-			// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-			// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-			// ))
+			Expect(logs).To(ContainLines(
+				`[extender (build)]   Configuring launch environment`,
+				`[extender (build)]     NODE_ENV     -> "production"`,
+				fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+				`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
+				`[extender (build)]     NODE_VERBOSE -> "false"`,
+			))
 
-			// Expect(logs).To(ContainLines(
-			// 	`[extender (build)]   Configuring launch environment`,
-			// 	`[extender (build)]     NODE_ENV     -> "production"`,
-			// 	fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-			// 	`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
-			// 	`[extender (build)]     NODE_VERBOSE -> "false"`,
-			// ))
-
-			// Expect(logs).To(ContainLines(
-			// 	"[extender (build)]     Writing exec.d/0-optimize-memory",
-			// 	"[extender (build)]       Calculates available memory based on container limits at launch time.",
-			// 	"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
-			// ))
+			Expect(logs).To(ContainLines(
+				"[extender (build)]     Writing exec.d/0-optimize-memory",
+				"[extender (build)]       Calculates available memory based on container limits at launch time.",
+				"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
+			))
 		})
 	})
 }
