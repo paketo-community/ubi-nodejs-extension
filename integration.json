@@ -2,6 +2,6 @@
   "build-plan": "github.com/paketo-community/build-plan",
   "node-engine": "github.com/paketo-buildpacks/node-engine",
   "builders": [
-    "index.docker.io/paketocommunity/builder-ubi-buildpackless-base:0.0.3"
+    "index.docker.io/paketocommunity/builder-ubi-buildpackless-base:latest"
   ]
 }

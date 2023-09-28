@@ -1,8 +1,10 @@
 package integration
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/paketo-buildpacks/occam"
@@ -47,9 +49,8 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 		source, err = occam.Source(filepath.Join("testdata", "optimize_memory"))
 		Expect(err).NotTo(HaveOccurred())
 
-		// var logs fmt.Stringer
-		image, _, err = pack.WithNoColor().Build.
-			WithPullPolicy("never").
+		var logs fmt.Stringer
+		image, logs, err = pack.WithNoColor().Build.
 			WithExtensions(
 				settings.Buildpacks.NodeExtension.Online,
 			).
@@ -61,8 +62,7 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 			WithNetwork("host").
 			WithPullPolicy("always").
 			Execute(name, source)
-
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), logs.String())
 
 		container, err = docker.Container.Run.
 			WithMemory("128m").
@@ -73,27 +73,23 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 
 		Eventually(container).Should(BeAvailable())
 
-		//Below commented code, will work only with the patched version of node-engine
-		//due to node-engine exits early as UBI image already provides node, therefore
-		//does not set any env variables.
+		Eventually(container).Should(Serve(ContainSubstring("NodeOptions: --no-warnings --max_old_space_size=96")).OnPort(8080))
 
-		// Eventually(container).Should(Serve(ContainSubstring("NodeOptions: --no-warnings --max_old_space_size=96")).OnPort(8080))
+		Expect(logs).To(ContainLines(
+			`[extender (build)]   Configuring launch environment`,
+			`[extender (build)]     NODE_ENV        -> "production"`,
+			fmt.Sprintf(`[extender (build)]     NODE_HOME       -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+			`[extender (build)]     NODE_OPTIONS    -> "--use-openssl-ca"`,
+			`[extender (build)]     NODE_VERBOSE    -> "false"`,
+			`[extender (build)]     OPTIMIZE_MEMORY -> "true"`,
+		))
 
-		// Expect(logs).To(ContainLines(
-		// 	`[extender (build)]   Configuring launch environment`,
-		// 	`[extender (build)]     NODE_ENV        -> "production"`,
-		// 	fmt.Sprintf(`[extender (build)]     NODE_HOME       -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
-		// 	`[extender (build)]     NODE_OPTIONS    -> "--use-openssl-ca"`,
-		// 	`[extender (build)]     NODE_VERBOSE    -> "false"`,
-		// 	`[extender (build)]     OPTIMIZE_MEMORY -> "true"`,
-		// ))
-
-		// Expect(logs).To(ContainLines(
-		// 	"[extender (build)]     Writing exec.d/0-optimize-memory",
-		// 	"[extender (build)]       Calculates available memory based on container limits at launch time.",
-		// 	"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
-		// 	"[extender (build)]       Assigns the NODE_OPTIONS environment variable with flag setting to optimize memory.",
-		// 	"[extender (build)]       Limits the total size of all objects on the heap to 75% of the MEMORY_AVAILABLE.",
-		// ))
+		Expect(logs).To(ContainLines(
+			"[extender (build)]     Writing exec.d/0-optimize-memory",
+			"[extender (build)]       Calculates available memory based on container limits at launch time.",
+			"[extender (build)]       Made available in the MEMORY_AVAILABLE environment variable.",
+			"[extender (build)]       Assigns the NODE_OPTIONS environment variable with flag setting to optimize memory.",
+			"[extender (build)]       Limits the total size of all objects on the heap to 75% of the MEMORY_AVAILABLE.",
+		))
 	})
 }

@@ -52,7 +52,7 @@ ubi extension.
      version = "1.4.0"
 
    [lifecycle]
-     version = "0.17.0-pre.2"
+     version = "0.17.0"
 
    [[order]]
      [[order.group]]
