@@ -38,6 +38,22 @@ type BuildDockerfileProps struct {
 //go:embed templates/build.Dockerfile
 var buildDockerfileTemplate string
 
+var etcPasswdFileContent = `root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+cnb:x:1001:1000::/home/cnb:/bin/bash
+`
+
 func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 
 	var (
@@ -48,15 +64,13 @@ func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 
 		it("Should fill with properties the template/build.Dockerfile", func() {
 
-			buildDockerfileProps := BuildDockerfileProps{
+			output, err := ubinodejsextension.FillPropsToTemplate(BuildDockerfileProps{
 				NODEJS_VERSION: 16,
 				CNB_USER_ID:    1000,
 				CNB_GROUP_ID:   1000,
 				CNB_STACK_ID:   "",
 				PACKAGES:       "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which",
-			}
-
-			output, err := ubinodejsextension.FillPropsToTemplate(buildDockerfileProps, buildDockerfileTemplate)
+			}, buildDockerfileTemplate)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(output).To(Equal(`ARG base_image
@@ -104,8 +118,8 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		err                  error
 		cnbDir               string
 		BuildDockerfileProps = ubinodejsextension.BuildDockerfileProps{
-			CNB_USER_ID:  ubinodejsextension.CNB_USER_ID,
-			CNB_GROUP_ID: ubinodejsextension.CNB_GROUP_ID,
+			CNB_USER_ID:  1001,
+			CNB_GROUP_ID: 1000,
 			CNB_STACK_ID: "",
 			PACKAGES:     ubinodejsextension.PACKAGES,
 		}
@@ -118,7 +132,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		logger := scribe.NewEmitter(buffer)
 		dependencyManager := postal.NewService(cargo.NewTransport())
 		generate = ubinodejsextension.Generate(dependencyManager, logger)
-
 	})
 
 	context("Generate called with NO node in buildplan", func() {
@@ -170,6 +183,15 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			err = os.Chdir(workingDir)
 			Expect(err).NotTo(HaveOccurred())
 
+			err := os.MkdirAll(filepath.Join(workingDir, "etc"), 0777)
+			Expect(err).NotTo(HaveOccurred())
+
+			etcPasswdFile, err := os.Create(filepath.Join(workingDir, "etc/passwd"))
+			Expect(err).NotTo(HaveOccurred())
+
+			defer etcPasswdFile.Close()
+
+			Expect(etcPasswdFile.WriteString(etcPasswdFileContent))
 		})
 
 		it.After(func() {
