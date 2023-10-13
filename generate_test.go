@@ -38,7 +38,8 @@ type BuildDockerfileProps struct {
 //go:embed templates/build.Dockerfile
 var buildDockerfileTemplate string
 
-var etcPasswdFileContent = `root:x:0:0:root:/root:/bin/bash
+func get_etc_passwd_file_content() (string, error) {
+	return `root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
 daemon:x:2:2:daemon:/sbin:/sbin/nologin
 adm:x:3:4:adm:/var/adm:/sbin/nologin
@@ -52,7 +53,8 @@ games:x:12:100:games:/usr/games:/sbin/nologin
 ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
 nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 cnb:x:1001:1000::/home/cnb:/bin/bash
-`
+`, nil
+}
 
 func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 
@@ -123,15 +125,16 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			CNB_STACK_ID: "",
 			PACKAGES:     ubinodejsextension.PACKAGES,
 		}
-		generate packit.GenerateFunc
-		buffer   *bytes.Buffer
+		generate          packit.GenerateFunc
+		buffer            *bytes.Buffer
+		logger            scribe.Emitter
+		dependencyManager postal.Service
 	)
 
 	it.Before(func() {
 		buffer = bytes.NewBuffer(nil)
-		logger := scribe.NewEmitter(buffer)
-		dependencyManager := postal.NewService(cargo.NewTransport())
-		generate = ubinodejsextension.Generate(dependencyManager, logger)
+		logger = scribe.NewEmitter(buffer)
+		dependencyManager = postal.NewService(cargo.NewTransport())
 	})
 
 	context("Generate called with NO node in buildplan", func() {
@@ -139,6 +142,9 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			workingDir = t.TempDir()
 			Expect(err).NotTo(HaveOccurred())
+
+			p := ubinodejsextension.NewDuringBuildPermissionsGetter(get_etc_passwd_file_content)
+			generate = ubinodejsextension.Generate(dependencyManager, logger, p)
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -172,6 +178,9 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
+			p := ubinodejsextension.NewDuringBuildPermissionsGetter(get_etc_passwd_file_content)
+			generate = ubinodejsextension.Generate(dependencyManager, logger, p)
+
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -182,16 +191,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			err = os.Chdir(workingDir)
 			Expect(err).NotTo(HaveOccurred())
-
-			err := os.MkdirAll(filepath.Join(workingDir, "etc"), 0777)
-			Expect(err).NotTo(HaveOccurred())
-
-			etcPasswdFile, err := os.Create(filepath.Join(workingDir, "etc/passwd"))
-			Expect(err).NotTo(HaveOccurred())
-
-			defer etcPasswdFile.Close()
-
-			Expect(etcPasswdFile.WriteString(etcPasswdFileContent))
 		})
 
 		it.After(func() {
@@ -631,6 +630,9 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
+
+			p := ubinodejsextension.NewDuringBuildPermissionsGetter(get_etc_passwd_file_content)
+			generate = ubinodejsextension.Generate(dependencyManager, logger, p)
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
