@@ -48,12 +48,22 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
-func Generate(dependencyManager DependencyManager, logger scribe.Emitter) packit.GenerateFunc {
+type EtcPasswdFileContentGetter func() (string, error)
+
+type DuringBuildPermissionsGetter struct {
+	get_etc_passwd_file_content EtcPasswdFileContentGetter
+}
+
+func NewDuringBuildPermissionsGetter(epfg EtcPasswdFileContentGetter) DuringBuildPermissionsGetter {
+	return DuringBuildPermissionsGetter{get_etc_passwd_file_content: epfg}
+}
+
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter, p DuringBuildPermissionsGetter) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
 		logger.Process("Resolving Node Engine version")
 
-		duringBuildPermissions, err := GetDuringBuildPermissions(context.WorkingDir)
+		duringBuildPermissions, err := p.duringBuildPermissionsGetter()
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
@@ -125,20 +135,16 @@ func FillPropsToTemplate(properties interface{}, templateString string) (result 
 	}
 
 	return buf.String(), nil
-
 }
 
-func GetDuringBuildPermissions(workDir string) (DuringBuildPermissions, error) {
+func (d *DuringBuildPermissionsGetter) duringBuildPermissionsGetter() (DuringBuildPermissions, error) {
 
-	etcPasswdFilePath := "etc/passwd"
 	re := regexp.MustCompile(`cnb:x:(\d+):(\d+)::`)
 
-	etcPasswdFile, err := os.ReadFile(filepath.Join(workDir, etcPasswdFilePath))
+	etcPasswdContent, err := d.get_etc_passwd_file_content()
 	if err != nil {
 		return DuringBuildPermissions{}, err
 	}
-
-	etcPasswdContent := string(etcPasswdFile)
 
 	matches := re.FindStringSubmatch(etcPasswdContent)
 
@@ -163,4 +169,13 @@ func GetDuringBuildPermissions(workDir string) (DuringBuildPermissions, error) {
 		CNB_USER_ID:  CNB_USER_ID,
 		CNB_GROUP_ID: CNB_GROUP_ID,
 	}, nil
+}
+
+func Get_etc_passwd_file_content() (string, error) {
+
+	etcPasswdFile, err := os.ReadFile(filepath.Join("/etc/passwd"))
+	if err != nil {
+		return "", err
+	}
+	return string(etcPasswdFile), nil
 }
