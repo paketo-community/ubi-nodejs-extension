@@ -54,6 +54,9 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter) packit
 		logger.Process("Resolving Node Engine version")
 
 		duringBuildPermissions, err := GetDuringBuildPermissions(context.WorkingDir)
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
 
 		entryResolver := draft.NewPlanner()
 		entry, allEntries := libnodejs.ResolveNodeVersion(entryResolver.Resolve, context.Plan)
