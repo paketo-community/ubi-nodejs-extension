@@ -60,7 +60,6 @@ func testProvides(t *testing.T, context spec.G, it spec.S) {
 					settings.Buildpacks.NodeEngine.Online,
 					settings.Buildpacks.BuildPlan.Online,
 				).
-				WithNetwork("host").
 				WithPullPolicy("always").
 				Execute(name, source)
 			Expect(err).ToNot(HaveOccurred(), logs.String)
