@@ -3,7 +3,6 @@ package ubinodejsextension
 import (
 	"bytes"
 	_ "embed"
-	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,6 +19,9 @@ import (
 )
 
 var PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which"
+
+var DEFAULT_USER_ID = 1001
+var DEFAULT_GROUP_ID = 1000
 
 type DuringBuildPermissions struct {
 	CNB_USER_ID, CNB_GROUP_ID int
@@ -148,9 +150,13 @@ func (d *DuringBuildPermissionsGetter) duringBuildPermissionsGetter() (DuringBui
 
 	matches := re.FindStringSubmatch(etcPasswdContent)
 
+	//In case of no cnb user in the /etc/passwd file
+	// return default values
 	if len(matches) != 3 {
-		err := errors.New("Unable to fetch user id")
-		return DuringBuildPermissions{}, err
+		return DuringBuildPermissions{
+			CNB_USER_ID:  DEFAULT_USER_ID,
+			CNB_GROUP_ID: DEFAULT_GROUP_ID,
+		}, nil
 	}
 
 	CNB_USER_ID, err := strconv.Atoi(matches[1])
