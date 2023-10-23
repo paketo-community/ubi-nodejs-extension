@@ -60,12 +60,12 @@ func NewDuringBuildPermissionsGetter(epfg EtcPasswdFileContentGetter) DuringBuil
 	return DuringBuildPermissionsGetter{get_etc_passwd_file_content: epfg}
 }
 
-func Generate(dependencyManager DependencyManager, logger scribe.Emitter, p DuringBuildPermissionsGetter) packit.GenerateFunc {
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissionsGetter DuringBuildPermissionsGetter) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
 		logger.Process("Resolving Node Engine version")
 
-		duringBuildPermissions, err := p.duringBuildPermissionsGetter()
+		duringBuildPermissions, err := duringBuildPermissionsGetter.duringBuildPermissionsGetter()
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}

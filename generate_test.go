@@ -14,7 +14,6 @@ import (
 	"github.com/paketo-buildpacks/packit/cargo"
 	"github.com/paketo-buildpacks/packit/v2"
 	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
-	"github.com/paketo-community/ubi-nodejs-extension/fakes"
 	"github.com/sclevine/spec"
 
 	"github.com/paketo-buildpacks/packit/v2/scribe"
@@ -38,6 +37,12 @@ type BuildDockerfileProps struct {
 
 //go:embed templates/build.Dockerfile
 var buildDockerfileTemplate string
+
+func mocked_get_etc_passwd_file_content(etcPasswdFileContent string) func() (string, error) {
+	return func() (string, error) {
+		return etcPasswdFileContent, nil
+	}
+}
 
 func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 
@@ -126,7 +131,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			workingDir = t.TempDir()
 			Expect(err).NotTo(HaveOccurred())
 
-			p := ubinodejsextension.NewDuringBuildPermissionsGetter(fakes.Get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
+			p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
 daemon:x:2:2:daemon:/sbin:/sbin/nologin
 adm:x:3:4:adm:/var/adm:/sbin/nologin
@@ -175,7 +180,7 @@ cnb:x:1001:1000::/home/cnb:/bin/bash
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
-			p := ubinodejsextension.NewDuringBuildPermissionsGetter(fakes.Get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
+			p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
 daemon:x:2:2:daemon:/sbin:/sbin/nologin
 adm:x:3:4:adm:/var/adm:/sbin/nologin
@@ -565,7 +570,7 @@ cnb:x:1001:1000::/home/cnb:/bin/bash
 				workingDir = t.TempDir()
 				Expect(err).NotTo(HaveOccurred())
 
-				p := ubinodejsextension.NewDuringBuildPermissionsGetter(fakes.Get_etc_passwd_file_content(""))
+				p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(""))
 				generate = ubinodejsextension.Generate(dependencyManager, logger, p)
 
 				err = toml.NewEncoder(buf).Encode(testBuildPlan)
@@ -708,7 +713,7 @@ cnb:x:1001:1000::/home/cnb:/bin/bash
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
-			p := ubinodejsextension.NewDuringBuildPermissionsGetter(fakes.Get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
+			p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
 daemon:x:2:2:daemon:/sbin:/sbin/nologin
 adm:x:3:4:adm:/var/adm:/sbin/nologin
