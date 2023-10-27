@@ -96,6 +96,99 @@ RUN echo "CNB_STACK_ID: "`))
 	})
 }
 
+func testFetchingPermissionsFromEtchPasswdFile(t *testing.T, context spec.G, it spec.S) {
+
+	var (
+		Expect = NewWithT(t).Expect
+		tmpDir string
+		path   string
+		err    error
+	)
+
+	context("/etc/passwd exists and has the cnb user", func() {
+
+		it("It should return the permissions specified for the cnb user", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			path = filepath.Join(tmpDir, "/passwd")
+
+			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
+			bin:x:1:1:bin:/bin:/sbin/nologin
+			daemon:x:2:2:daemon:/sbin:/sbin/nologin
+			adm:x:3:4:adm:/var/adm:/sbin/nologin
+			lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+			sync:x:5:0:sync:/sbin:/bin/sync
+			shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+			halt:x:7:0:halt:/sbin:/sbin/halt
+			mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+			operator:x:11:0:operator:/root:/sbin/nologin
+			games:x:12:100:games:/usr/games:/sbin/nologin
+			ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+			cnb:x:1234:2345::/home/cnb:/bin/bash
+			nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+			`), 0600)).To(Succeed())
+
+			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				ubinodejsextension.DuringBuildPermissions{
+					CNB_USER_ID:  1234,
+					CNB_GROUP_ID: 2345},
+			))
+		})
+	})
+
+	context("/etc/passwd exists and does NOT have the cnb user", func() {
+
+		it("It should return the default permissions", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			path = filepath.Join(tmpDir, "/passwd")
+
+			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
+			bin:x:1:1:bin:/bin:/sbin/nologin
+			daemon:x:2:2:daemon:/sbin:/sbin/nologin
+			adm:x:3:4:adm:/var/adm:/sbin/nologin
+			lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+			sync:x:5:0:sync:/sbin:/bin/sync
+			shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+			halt:x:7:0:halt:/sbin:/sbin/halt
+			mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+			operator:x:11:0:operator:/root:/sbin/nologin
+			games:x:12:100:games:/usr/games:/sbin/nologin
+			ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+			nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+			`), 0600)).To(Succeed())
+
+			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				ubinodejsextension.DuringBuildPermissions{
+					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
+					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+			))
+		})
+	})
+
+	context("/etc/passwd does NOT exist", func() {
+
+		it("It should return the default permissions", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(tmpDir)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				ubinodejsextension.DuringBuildPermissions{
+					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
+					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+			))
+		})
+	})
+}
+
 func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 	var (
@@ -131,22 +224,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			workingDir = t.TempDir()
 			Expect(err).NotTo(HaveOccurred())
 
-			p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
-bin:x:1:1:bin:/bin:/sbin/nologin
-daemon:x:2:2:daemon:/sbin:/sbin/nologin
-adm:x:3:4:adm:/var/adm:/sbin/nologin
-lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
-sync:x:5:0:sync:/sbin:/bin/sync
-shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
-halt:x:7:0:halt:/sbin:/sbin/halt
-mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
-operator:x:11:0:operator:/root:/sbin/nologin
-games:x:12:100:games:/usr/games:/sbin/nologin
-ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
-nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
-cnb:x:1001:1000::/home/cnb:/bin/bash
-`))
-			generate = ubinodejsextension.Generate(dependencyManager, logger, p)
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1001, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -180,22 +258,7 @@ cnb:x:1001:1000::/home/cnb:/bin/bash
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
-			p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
-bin:x:1:1:bin:/bin:/sbin/nologin
-daemon:x:2:2:daemon:/sbin:/sbin/nologin
-adm:x:3:4:adm:/var/adm:/sbin/nologin
-lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
-sync:x:5:0:sync:/sbin:/bin/sync
-shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
-halt:x:7:0:halt:/sbin:/sbin/halt
-mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
-operator:x:11:0:operator:/root:/sbin/nologin
-games:x:12:100:games:/usr/games:/sbin/nologin
-ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
-nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
-cnb:x:1001:1000::/home/cnb:/bin/bash
-`))
-			generate = ubinodejsextension.Generate(dependencyManager, logger, p)
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1001, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -555,72 +618,6 @@ cnb:x:1001:1000::/home/cnb:/bin/bash
 
 		})
 
-		context("Generate called with an empty /etc/passwd file", func() {
-
-			buildDockerfileContentWithDefaultValues, _ := ubinodejsextension.FillPropsToTemplate(ubinodejsextension.BuildDockerfileProps{
-				NODEJS_VERSION: 18,
-				CNB_USER_ID:    ubinodejsextension.DEFAULT_USER_ID,
-				CNB_GROUP_ID:   ubinodejsextension.DEFAULT_GROUP_ID,
-				CNB_STACK_ID:   "",
-				PACKAGES:       ubinodejsextension.PACKAGES,
-			}, buildDockerfileTemplate)
-
-			it.Before(func() {
-
-				workingDir = t.TempDir()
-				Expect(err).NotTo(HaveOccurred())
-
-				p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(""))
-				generate = ubinodejsextension.Generate(dependencyManager, logger, p)
-
-				err = toml.NewEncoder(buf).Encode(testBuildPlan)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(os.WriteFile(filepath.Join(workingDir, "plan"), buf.Bytes(), 0600)).To(Succeed())
-
-				err = os.Chdir(workingDir)
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			it.After(func() {
-				Expect(os.RemoveAll(workingDir)).To(Succeed())
-			})
-
-			it("The uid and gid should fallback to default values", func() {
-
-				extensionToml, _ := readExtensionTomlTemplateFile()
-
-				cnbDir, err = os.MkdirTemp("", "cnb")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
-
-				generateResult, err = generate(packit.GenerateContext{
-					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{
-								Name: "node",
-								Metadata: map[string]interface{}{
-									"version":        "18",
-									"version-source": "BP_NODE_VERSION",
-								},
-							},
-						},
-					},
-					Stack: "io.buildpacks.stacks.ubi8",
-				})
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(generateResult).NotTo(Equal(nil))
-
-				buf := new(strings.Builder)
-				_, _ = io.Copy(buf, generateResult.BuildDockerfile)
-				Expect(buf.String()).To(Equal(buildDockerfileContentWithDefaultValues))
-
-			})
-		}, spec.Sequential())
-
 		it("Should error on below cases of requested node", func() {
 
 			extensionToml, _ := readExtensionTomlTemplateFile()
@@ -713,22 +710,7 @@ cnb:x:1001:1000::/home/cnb:/bin/bash
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
-			p := ubinodejsextension.NewDuringBuildPermissionsGetter(mocked_get_etc_passwd_file_content(`root:x:0:0:root:/root:/bin/bash
-bin:x:1:1:bin:/bin:/sbin/nologin
-daemon:x:2:2:daemon:/sbin:/sbin/nologin
-adm:x:3:4:adm:/var/adm:/sbin/nologin
-lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
-sync:x:5:0:sync:/sbin:/bin/sync
-shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
-halt:x:7:0:halt:/sbin:/sbin/halt
-mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
-operator:x:11:0:operator:/root:/sbin/nologin
-games:x:12:100:games:/usr/games:/sbin/nologin
-ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
-nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
-cnb:x:1001:1000::/home/cnb:/bin/bash
-`))
-			generate = ubinodejsextension.Generate(dependencyManager, logger, p)
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1001, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
