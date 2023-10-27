@@ -201,7 +201,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		err                  error
 		cnbDir               string
 		BuildDockerfileProps = ubinodejsextension.BuildDockerfileProps{
-			CNB_USER_ID:  1001,
+			CNB_USER_ID:  1002,
 			CNB_GROUP_ID: 1000,
 			CNB_STACK_ID: "",
 			PACKAGES:     ubinodejsextension.PACKAGES,
@@ -224,7 +224,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			workingDir = t.TempDir()
 			Expect(err).NotTo(HaveOccurred())
 
-			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1001, CNB_GROUP_ID: 1000})
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -258,7 +258,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
-			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1001, CNB_GROUP_ID: 1000})
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -710,7 +710,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
-			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1001, CNB_GROUP_ID: 1000})
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())

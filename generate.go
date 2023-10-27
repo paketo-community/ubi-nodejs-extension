@@ -20,7 +20,7 @@ import (
 
 var PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which"
 
-var DEFAULT_USER_ID = 1001
+var DEFAULT_USER_ID = 1002
 var DEFAULT_GROUP_ID = 1000
 
 type DuringBuildPermissions struct {
