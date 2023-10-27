@@ -38,12 +38,6 @@ type BuildDockerfileProps struct {
 //go:embed templates/build.Dockerfile
 var buildDockerfileTemplate string
 
-func mocked_get_etc_passwd_file_content(etcPasswdFileContent string) func() (string, error) {
-	return func() (string, error) {
-		return etcPasswdFileContent, nil
-	}
-}
-
 func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 
 	var (
@@ -114,20 +108,20 @@ func testFetchingPermissionsFromEtchPasswdFile(t *testing.T, context spec.G, it 
 			path = filepath.Join(tmpDir, "/passwd")
 
 			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
-			bin:x:1:1:bin:/bin:/sbin/nologin
-			daemon:x:2:2:daemon:/sbin:/sbin/nologin
-			adm:x:3:4:adm:/var/adm:/sbin/nologin
-			lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
-			sync:x:5:0:sync:/sbin:/bin/sync
-			shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
-			halt:x:7:0:halt:/sbin:/sbin/halt
-			mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
-			operator:x:11:0:operator:/root:/sbin/nologin
-			games:x:12:100:games:/usr/games:/sbin/nologin
-			ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
-			cnb:x:1234:2345::/home/cnb:/bin/bash
-			nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
-			`), 0600)).To(Succeed())
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+cnb:x:1234:2345::/home/cnb:/bin/bash
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+`), 0600)).To(Succeed())
 
 			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
 
@@ -148,19 +142,19 @@ func testFetchingPermissionsFromEtchPasswdFile(t *testing.T, context spec.G, it 
 			path = filepath.Join(tmpDir, "/passwd")
 
 			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
-			bin:x:1:1:bin:/bin:/sbin/nologin
-			daemon:x:2:2:daemon:/sbin:/sbin/nologin
-			adm:x:3:4:adm:/var/adm:/sbin/nologin
-			lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
-			sync:x:5:0:sync:/sbin:/bin/sync
-			shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
-			halt:x:7:0:halt:/sbin:/sbin/halt
-			mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
-			operator:x:11:0:operator:/root:/sbin/nologin
-			games:x:12:100:games:/usr/games:/sbin/nologin
-			ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
-			nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
-			`), 0600)).To(Succeed())
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+`), 0600)).To(Succeed())
 
 			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
 
