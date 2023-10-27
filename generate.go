@@ -50,25 +50,10 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
-type EtcPasswdFileContentGetter func() (string, error)
-
-type DuringBuildPermissionsGetter struct {
-	get_etc_passwd_file_content EtcPasswdFileContentGetter
-}
-
-func NewDuringBuildPermissionsGetter(epfg EtcPasswdFileContentGetter) DuringBuildPermissionsGetter {
-	return DuringBuildPermissionsGetter{get_etc_passwd_file_content: epfg}
-}
-
-func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissionsGetter DuringBuildPermissionsGetter) packit.GenerateFunc {
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
 		logger.Process("Resolving Node Engine version")
-
-		duringBuildPermissions, err := duringBuildPermissionsGetter.duringBuildPermissionsGetter()
-		if err != nil {
-			return packit.GenerateResult{}, err
-		}
 
 		entryResolver := draft.NewPlanner()
 		entry, allEntries := libnodejs.ResolveNodeVersion(entryResolver.Resolve, context.Plan)
@@ -139,49 +124,41 @@ func FillPropsToTemplate(properties interface{}, templateString string) (result 
 	return buf.String(), nil
 }
 
-func (d *DuringBuildPermissionsGetter) duringBuildPermissionsGetter() (DuringBuildPermissions, error) {
+func GetDuringBuildPermissions(filepath string) DuringBuildPermissions {
 
+	defaultPermissions := DuringBuildPermissions{
+		CNB_USER_ID:  DEFAULT_USER_ID,
+		CNB_GROUP_ID: DEFAULT_GROUP_ID,
+	}
 	re := regexp.MustCompile(`cnb:x:(\d+):(\d+)::`)
 
-	etcPasswdContent, err := d.get_etc_passwd_file_content()
+	etcPasswdFile, err := os.ReadFile(filepath)
+
 	if err != nil {
-		return DuringBuildPermissions{}, err
+		return defaultPermissions
 	}
+	etcPasswdContent := string(etcPasswdFile)
 
 	matches := re.FindStringSubmatch(etcPasswdContent)
 
-	//In case of no cnb user in the /etc/passwd file
-	// return default values
 	if len(matches) != 3 {
-		return DuringBuildPermissions{
-			CNB_USER_ID:  DEFAULT_USER_ID,
-			CNB_GROUP_ID: DEFAULT_GROUP_ID,
-		}, nil
+		return defaultPermissions
 	}
 
 	CNB_USER_ID, err := strconv.Atoi(matches[1])
 
 	if err != nil {
-		return DuringBuildPermissions{}, err
+		return defaultPermissions
 	}
 
 	CNB_GROUP_ID, err := strconv.Atoi(matches[2])
 
 	if err != nil {
-		return DuringBuildPermissions{}, err
+		return defaultPermissions
 	}
 
 	return DuringBuildPermissions{
 		CNB_USER_ID:  CNB_USER_ID,
 		CNB_GROUP_ID: CNB_GROUP_ID,
-	}, nil
-}
-
-func Get_etc_passwd_file_content() (string, error) {
-
-	etcPasswdFile, err := os.ReadFile(filepath.Join("/etc/passwd"))
-	if err != nil {
-		return "", err
 	}
-	return string(etcPasswdFile), nil
 }
