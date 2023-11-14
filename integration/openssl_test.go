@@ -70,7 +70,6 @@ func testOpenSSL(t *testing.T, context spec.G, it spec.S) {
 					WithEnv(map[string]string{
 						"BP_NODE_VERSION": "16.*.*",
 					}).
-					WithNetwork("host").
 					WithPullPolicy("always").
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
@@ -113,7 +112,6 @@ func testOpenSSL(t *testing.T, context spec.G, it spec.S) {
 					WithEnv(map[string]string{
 						"BP_NODE_VERSION": "18.*.*",
 					}).
-					WithNetwork("host").
 					WithPullPolicy("always").
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)

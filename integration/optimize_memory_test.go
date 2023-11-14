@@ -59,7 +59,6 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 				settings.Buildpacks.Processes.Online,
 			).
 			WithEnv(map[string]string{"BP_NODE_OPTIMIZE_MEMORY": "true"}).
-			WithNetwork("host").
 			WithPullPolicy("always").
 			Execute(name, source)
 		Expect(err).NotTo(HaveOccurred(), logs.String())

@@ -12,5 +12,6 @@ func TestUnitNode(t *testing.T) {
 	suite("Detect", testDetect)
 	suite("Generate", testGenerate)
 	suite("Dockerfile Creation", testFillPropsToTemplate)
+	suite("Fetching during build permissions", testFetchingPermissionsFromEtchPasswdFile)
 	suite.Run(t)
 }

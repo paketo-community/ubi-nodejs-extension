@@ -48,15 +48,13 @@ func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 
 		it("Should fill with properties the template/build.Dockerfile", func() {
 
-			buildDockerfileProps := BuildDockerfileProps{
+			output, err := ubinodejsextension.FillPropsToTemplate(BuildDockerfileProps{
 				NODEJS_VERSION: 16,
 				CNB_USER_ID:    1000,
 				CNB_GROUP_ID:   1000,
 				CNB_STACK_ID:   "",
 				PACKAGES:       "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which",
-			}
-
-			output, err := ubinodejsextension.FillPropsToTemplate(buildDockerfileProps, buildDockerfileTemplate)
+			}, buildDockerfileTemplate)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(output).To(Equal(`ARG base_image
@@ -92,6 +90,99 @@ RUN echo "CNB_STACK_ID: "`))
 	})
 }
 
+func testFetchingPermissionsFromEtchPasswdFile(t *testing.T, context spec.G, it spec.S) {
+
+	var (
+		Expect = NewWithT(t).Expect
+		tmpDir string
+		path   string
+		err    error
+	)
+
+	context("/etc/passwd exists and has the cnb user", func() {
+
+		it("It should return the permissions specified for the cnb user", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			path = filepath.Join(tmpDir, "/passwd")
+
+			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+cnb:x:1234:2345::/home/cnb:/bin/bash
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+`), 0600)).To(Succeed())
+
+			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				ubinodejsextension.DuringBuildPermissions{
+					CNB_USER_ID:  1234,
+					CNB_GROUP_ID: 2345},
+			))
+		})
+	})
+
+	context("/etc/passwd exists and does NOT have the cnb user", func() {
+
+		it("It should return the default permissions", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			path = filepath.Join(tmpDir, "/passwd")
+
+			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+`), 0600)).To(Succeed())
+
+			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				ubinodejsextension.DuringBuildPermissions{
+					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
+					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+			))
+		})
+	})
+
+	context("/etc/passwd does NOT exist", func() {
+
+		it("It should return the default permissions", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(tmpDir)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				ubinodejsextension.DuringBuildPermissions{
+					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
+					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+			))
+		})
+	})
+}
+
 func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 	var (
@@ -104,21 +195,21 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		err                  error
 		cnbDir               string
 		BuildDockerfileProps = ubinodejsextension.BuildDockerfileProps{
-			CNB_USER_ID:  ubinodejsextension.CNB_USER_ID,
-			CNB_GROUP_ID: ubinodejsextension.CNB_GROUP_ID,
+			CNB_USER_ID:  1002,
+			CNB_GROUP_ID: 1000,
 			CNB_STACK_ID: "",
 			PACKAGES:     ubinodejsextension.PACKAGES,
 		}
-		generate packit.GenerateFunc
-		buffer   *bytes.Buffer
+		generate          packit.GenerateFunc
+		buffer            *bytes.Buffer
+		logger            scribe.Emitter
+		dependencyManager postal.Service
 	)
 
 	it.Before(func() {
 		buffer = bytes.NewBuffer(nil)
-		logger := scribe.NewEmitter(buffer)
-		dependencyManager := postal.NewService(cargo.NewTransport())
-		generate = ubinodejsextension.Generate(dependencyManager, logger)
-
+		logger = scribe.NewEmitter(buffer)
+		dependencyManager = postal.NewService(cargo.NewTransport())
 	})
 
 	context("Generate called with NO node in buildplan", func() {
@@ -126,6 +217,8 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			workingDir = t.TempDir()
 			Expect(err).NotTo(HaveOccurred())
+
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -159,6 +252,8 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
 
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
+
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -169,7 +264,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			err = os.Chdir(workingDir)
 			Expect(err).NotTo(HaveOccurred())
-
 		})
 
 		it.After(func() {
@@ -609,6 +703,8 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			workingDir = t.TempDir()
 			cnbDir, err = os.MkdirTemp("", "cnb")
+
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())

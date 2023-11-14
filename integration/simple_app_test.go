@@ -77,7 +77,6 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 						settings.Buildpacks.BuildPlan.Online,
 					).
 					WithSBOMOutputDir(sbomDir).
-					WithNetwork("host").
 					WithPullPolicy("always").
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
@@ -170,7 +169,6 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 						settings.Buildpacks.NodeEngine.Online,
 						settings.Buildpacks.BuildPlan.Online,
 					).
-					WithNetwork("host").
 					WithPullPolicy("always").
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
@@ -249,7 +247,6 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 						settings.Buildpacks.BuildPlan.Online,
 					).
 					WithSBOMOutputDir(sbomDir).
-					WithNetwork("host").
 					WithPullPolicy("always").
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
@@ -341,7 +338,6 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 						settings.Buildpacks.BuildPlan.Online,
 					).
 					WithSBOMOutputDir(sbomDir).
-					WithNetwork("host").
 					WithPullPolicy("always").
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
@@ -444,7 +440,6 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				).
 				WithEnv(map[string]string{"BP_NODE_VERSION": "~14"}).
 				WithSBOMOutputDir(sbomDir).
-				WithNetwork("host").
 				WithPullPolicy("always").
 				Execute(name, source)
 
