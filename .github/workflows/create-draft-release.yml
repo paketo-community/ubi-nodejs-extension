@@ -62,7 +62,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-22.04
-    needs: unit
+    needs: integration
     steps:
     - name: Setup Go
       uses: actions/setup-go@v3
@@ -70,7 +70,8 @@ jobs:
         go-version: 'stable'
     - name: Checkout
       uses: actions/checkout@v3
-    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/* || true
+      with:
+        fetch-tags: true
     - name: Reset Draft Release
       id: reset
       uses: paketo-buildpacks/github-config/actions/release/reset-draft@main
@@ -126,7 +127,7 @@ jobs:
   failure:
     name: Alert on Failure
     runs-on: ubuntu-22.04
-    needs: [ unit, release ]
+    needs: [ unit, integration, release ]
     if: ${{ always() && needs.unit.result == 'failure' || needs.integration.result == 'failure' || needs.release.result == 'failure' }}
     steps:
     - name: File Failure Alert Issue
