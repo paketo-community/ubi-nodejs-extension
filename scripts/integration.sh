@@ -141,11 +141,6 @@ function builder_images::pull() {
   docker pull "${lifecycle_image}"
 }
 
-function token::fetch() {
-  GIT_TOKEN="$(util::git::token::fetch)"
-  export GIT_TOKEN
-}
-
 function tests::run() {
   util::print::title "Run Buildpack Runtime Integration Tests"
   util::print::info "Using ${1} as builder..."
