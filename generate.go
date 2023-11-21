@@ -18,7 +18,7 @@ import (
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
 
-var PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which"
+var PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
 
 var DEFAULT_USER_ID = 1002
 var DEFAULT_GROUP_ID = 1000
@@ -84,7 +84,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			CNB_USER_ID:    duringBuildPermissions.CNB_USER_ID,
 			CNB_GROUP_ID:   duringBuildPermissions.CNB_GROUP_ID,
 			CNB_STACK_ID:   CNB_STACK_ID,
-			PACKAGES:       "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3",
+			PACKAGES:       PACKAGES,
 		}, buildDockerfileTemplate)
 
 		if err != nil {
