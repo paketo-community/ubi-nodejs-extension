@@ -69,12 +69,13 @@ func testProvides(t *testing.T, context spec.G, it spec.S) {
 				"  Resolving Node Engine version",
 				"    Candidate version sources (in priority order):",
 				"      <unknown> -> \"\""))
-			Expect(logs).To(ContainLines("  Selected Node Engine Major version 18"))
+
+			Expect(logs).To(ContainLines(fmt.Sprintf("  Selected Node Engine Major version %s", strings.Split(settings.Metadata.DefaultVersions.Node, ".")[0])))
 			Expect(logs).To(ContainLines("===> RESTORING"))
 			Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
 			Expect(logs).To(ContainLines(
 				"[extender (build)] Enabling module streams:",
-				"[extender (build)]     nodejs:18"))
+				fmt.Sprintf("[extender (build)]     nodejs:%s", strings.Split(settings.Metadata.DefaultVersions.Node, ".")[0])))
 
 			// SBOM is not supported at the moment from UBI image
 			// therefore there are no available logs to test/validate
