@@ -88,12 +88,12 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 					"      <unknown> -> \"\"",
 				))
 				Expect(logs).To(ContainLines(
-					"  Selected Node Engine Major version 18"))
+					fmt.Sprintf("  Selected Node Engine Major version %s", strings.Split(settings.Metadata.DefaultVersions.Node, ".")[0])))
 				Expect(logs).To(ContainLines("===> RESTORING"))
 				Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
 				Expect(logs).To(ContainLines(
 					"[extender (build)] Enabling module streams:",
-					"[extender (build)]     nodejs:18"))
+					fmt.Sprintf("[extender (build)]     nodejs:%s", strings.Split(settings.Metadata.DefaultVersions.Node, ".")[0])))
 
 				// SBOM is not supported at the moment from UBI image
 				// therefore there are no available logs to test/validate
@@ -452,7 +452,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				"      <unknown>       -> \"\"",
 			))
 			Expect(logs).To(ContainLines(
-				"failed to satisfy \"node\" dependency version constraint \"~14\": no compatible versions on \"io.buildpacks.stacks.ubi8\" stack. Supported versions are: [18.1000, 16.1000]",
+				MatchRegexp(`failed to satisfy \"node\" dependency version constraint \"~14\": no compatible versions on \"io.buildpacks.stacks.ubi8\" stack. Supported versions are: \[(?:\d+\.\d+(?:, )?)*\d+\.\d+\]`),
 			))
 		})
 	})

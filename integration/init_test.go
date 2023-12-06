@@ -36,6 +36,12 @@ var settings struct {
 		Name string
 	}
 
+	Metadata struct {
+		DefaultVersions struct {
+			Node string `toml:"node"`
+		} `toml:"default-versions"`
+	} `toml:"metadata"`
+
 	Buildpack struct {
 		ID   string
 		Name string

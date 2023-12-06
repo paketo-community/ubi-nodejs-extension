@@ -10,7 +10,14 @@ description = "This extension installs the appropriate nodejs runtime via dnf"
   pre-package = "./scripts/build.sh"
   include-files = ["bin/generate", "bin/detect", "bin/run", "extension.toml"]
   [metadata.default-versions]
-    node = "18.*.*"
+    node = "20.*.*"
+
+  [[metadata.dependencies]]
+    id = "node"
+    name = "Ubi Node Extension"
+    stacks = ["io.buildpacks.stacks.ubi8"]
+    source = "paketocommunity/run-nodejs-20-ubi-base"
+    version = "20.1000"
 
   [[metadata.dependencies]]
     id = "node"
