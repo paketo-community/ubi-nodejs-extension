@@ -53,11 +53,11 @@ func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 				CNB_USER_ID:    1000,
 				CNB_GROUP_ID:   1000,
 				CNB_STACK_ID:   "",
-				PACKAGES:       "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which",
+				PACKAGES:       ubinodejsextension.PACKAGES,
 			}, buildDockerfileTemplate)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(Equal(`ARG base_image
+			Expect(output).To(Equal(fmt.Sprintf(`ARG base_image
 FROM ${base_image}
 
 USER root
@@ -66,12 +66,12 @@ ARG build_id=0
 RUN echo ${build_id}
 
 RUN microdnf -y module enable nodejs:16
-RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which && microdnf clean all
+RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y %s && microdnf clean all
 
 RUN echo uid:gid "1000:1000"
 USER 1000:1000
 
-RUN echo "CNB_STACK_ID: "`))
+RUN echo "CNB_STACK_ID: "`, ubinodejsextension.PACKAGES)))
 
 		})
 
