@@ -56,7 +56,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
 		logger.Process("Resolving Node Engine version")
 
-		//find the version with the highest priority
+		// Find the version with the highest priority
 		entryResolver := draft.NewPlanner()
 		highestPriorityNodeVersion, allNodeVersionsInPriorityOrder := libnodejs.ResolveNodeVersion(entryResolver.Resolve, context.Plan)
 		if highestPriorityNodeVersion.Name == "" {
@@ -65,7 +65,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Candidates(allNodeVersionsInPriorityOrder)
 
-		//Search and fetch the version from the extension.toml
+		// Search and fetch the version from the extension.toml
 		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
 		extensionFilePath := filepath.Join(context.CNBPath, "extension.toml")
 		dependency, err := dependencyManager.Resolve(extensionFilePath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)

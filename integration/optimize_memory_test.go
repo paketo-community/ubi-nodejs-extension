@@ -62,8 +62,6 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 			WithPullPolicy("always").
 			Execute(name, source)
 
-		fmt.Println(logs.String())
-
 		Expect(err).NotTo(HaveOccurred(), logs.String())
 
 		container, err = docker.Container.Run.

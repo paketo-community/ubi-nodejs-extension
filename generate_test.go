@@ -917,7 +917,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 				buf := new(strings.Builder)
 				_, _ = io.Copy(buf, generateResult.RunDockerfile)
-				fmt.Println(buf.String())
 				Expect(buf.String()).To(Equal(runDockerfileContent))
 			}
 		})
@@ -970,7 +969,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 				buf := new(strings.Builder)
 				_, _ = io.Copy(buf, generateResult.RunDockerfile)
-				fmt.Println(buf.String())
 				Expect(buf.String()).To(Equal(runDockerfileContent))
 			}
 		})
