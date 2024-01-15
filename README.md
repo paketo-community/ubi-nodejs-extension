@@ -97,6 +97,17 @@ value = '~20'
 
 To specify a project subdirectory to be used as the root of the app, please use the `BP_NODE_PROJECT_PATH` environment variable at build time either directly (ex. `pack build my-app --env BP_NODE_PROJECT_PATH=./src/my-app`) or through a [project.toml file](https://github.com/buildpacks/spec/blob/main/extensions/project-descriptor.md). This could be useful if your app is a part of a monorepo.
 
+### Setting explicitly a run image `BP_NODE_RUN_EXTENSION`
+
+With `BP_NODE_RUN_EXTENSION` environment variable, you are able to specify the run image of the built application, without changing the source code of the extension (specifically the extension.toml file) as shown on below example.
+
+```bash
+  pack build test-app-name \
+     --path ./app-dir \
+     --builder paketocommunity/builder-ubi-base \
+     --env BP_NODE_RUN_EXTENSION="localhost:5000/my-run-image"
+```
+
 ## Run Tests
 
 To run all unit tests, run:
