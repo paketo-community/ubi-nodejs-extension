@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -22,6 +23,8 @@ var settings struct {
 		}
 		NodeEngine struct {
 			Online string
+			ID     string
+			Name   string
 		}
 		BuildPlan struct {
 			Online string
@@ -40,12 +43,14 @@ var settings struct {
 		DefaultVersions struct {
 			Node string `toml:"node"`
 		} `toml:"default-versions"`
+		Dependencies []struct {
+			ID      string   `toml:"id"`
+			Name    string   `toml:"name"`
+			Stacks  []string `toml:"stacks"`
+			Source  string   `toml:"source"`
+			Version string   `toml:"version"`
+		} `toml:"dependencies"`
 	} `toml:"metadata"`
-
-	Buildpack struct {
-		ID   string
-		Name string
-	}
 
 	Config struct {
 		BuildPlan  string `json:"build-plan"`
@@ -56,9 +61,7 @@ var settings struct {
 func TestIntegration(t *testing.T) {
 	Expect := NewWithT(t).Expect
 
-	root, err := filepath.Abs("./..")
-	Expect(err).ToNot(HaveOccurred())
-
+	//reading the extension.toml file
 	file, err := os.Open("../extension.toml")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -66,9 +69,12 @@ func TestIntegration(t *testing.T) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(file.Close()).To(Succeed())
 
-	settings.Buildpack.ID = "paketo-buildpacks/node-engine"
-	settings.Buildpack.Name = "Paketo Buildpack for Node Engine"
+	// order by descending version
+	sort.Slice(settings.Metadata.Dependencies, func(i, j int) bool {
+		return settings.Metadata.Dependencies[i].Version > settings.Metadata.Dependencies[j].Version
+	})
 
+	//reading the integration.json file
 	file, err = os.Open("../integration.json")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -76,6 +82,9 @@ func TestIntegration(t *testing.T) {
 	Expect(file.Close()).To(Succeed())
 
 	buildpackStore := occam.NewBuildpackStore()
+
+	root, err := filepath.Abs("./..")
+	Expect(err).ToNot(HaveOccurred())
 
 	settings.Buildpacks.NodeExtension.Online, err = buildpackStore.Get.
 		WithVersion("1.2.3").
@@ -91,11 +100,15 @@ func TestIntegration(t *testing.T) {
 		Execute(settings.Config.NodeEngine)
 	Expect(err).NotTo(HaveOccurred())
 
+	settings.Buildpacks.NodeEngine.ID = "paketo-buildpacks/node-engine"
+	settings.Buildpacks.NodeEngine.Name = "Paketo Buildpack for Node Engine"
+
 	settings.Buildpacks.Processes.Online = filepath.Join("testdata", "processes_buildpack")
 
 	SetDefaultEventuallyTimeout(5 * time.Second)
 
 	suite := spec.New("Integration", spec.Report(report.Terminal{}), spec.Parallel())
+	suite("FetchRunImageFromEnv", testFetchRunImageFromEnv)
 	suite("OptimizeMemory", testOptimizeMemory)
 	suite("ProjectPath", testProjectPath)
 	suite("Provides", testProvides)
