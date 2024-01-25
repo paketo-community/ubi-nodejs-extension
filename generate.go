@@ -81,11 +81,11 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		var selectedNodeRunImage string
 
-		bpNodeRunExtension, bpNodeRunExtensionEnvExists := os.LookupEnv("BP_NODE_RUN_EXTENSION")
+		bpNodeRunExtension, bpNodeRunExtensionEnvExists := os.LookupEnv("BP_UBI_RUN_IMAGE_OVERRIDE")
 		if !bpNodeRunExtensionEnvExists || bpNodeRunExtension == "" {
 			selectedNodeRunImage = dependency.Source
 		} else {
-			logger.Process("Using run image specified by BP_NODE_RUN_EXTENSION %s", bpNodeRunExtension)
+			logger.Process("Using run image specified by BP_UBI_RUN_IMAGE_OVERRIDE %s", bpNodeRunExtension)
 			selectedNodeRunImage = bpNodeRunExtension
 		}
 

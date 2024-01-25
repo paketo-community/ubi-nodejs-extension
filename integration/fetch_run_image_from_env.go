@@ -46,8 +46,8 @@ func testFetchRunImageFromEnv(t *testing.T, context spec.G, it spec.S) {
 		Expect(os.RemoveAll(source)).To(Succeed())
 	})
 
-	context("when BP_NODE_RUN_EXTENSION is set", func() {
-		it("uses the run image specified from the BP_NODE_RUN_EXTENSION", func() {
+	context("when BP_UBI_RUN_IMAGE_OVERRIDE is set", func() {
+		it("uses the run image specified from the BP_UBI_RUN_IMAGE_OVERRIDE", func() {
 			var err error
 			source, err = occam.Source(filepath.Join("testdata", "simple_app"))
 			Expect(err).NotTo(HaveOccurred())
@@ -71,7 +71,7 @@ func testFetchRunImageFromEnv(t *testing.T, context spec.G, it spec.S) {
 					settings.Buildpacks.NodeEngine.Online,
 					settings.Buildpacks.Processes.Online,
 				).
-				WithEnv(map[string]string{"BP_NODE_RUN_EXTENSION": nodeRunImage, "BP_NODE_VERSION": fmt.Sprint(buildNodeMajorVersion)}).
+				WithEnv(map[string]string{"BP_UBI_RUN_IMAGE_OVERRIDE": nodeRunImage, "BP_NODE_VERSION": fmt.Sprint(buildNodeMajorVersion)}).
 				WithPullPolicy("always").
 				Execute(name, source)
 
@@ -82,7 +82,7 @@ func testFetchRunImageFromEnv(t *testing.T, context spec.G, it spec.S) {
 			Expect(logs).To(ContainLines("    Candidate version sources (in priority order):"))
 			Expect(logs).To(ContainLines(fmt.Sprintf("      BP_NODE_VERSION -> \"%d\"", buildNodeMajorVersion)))
 			Expect(logs).To(ContainLines("      <unknown>       -> \"\""))
-			Expect(logs).To(ContainLines(fmt.Sprintf("  Using run image specified by BP_NODE_RUN_EXTENSION %s", nodeRunImage)))
+			Expect(logs).To(ContainLines(fmt.Sprintf("  Using run image specified by BP_UBI_RUN_IMAGE_OVERRIDE %s", nodeRunImage)))
 
 			Expect(logs).To(ContainLines(
 				"[extender (build)] Enabling module streams:",

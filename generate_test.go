@@ -846,7 +846,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		})
 	}, spec.Sequential())
 
-	context("When BP_NODE_RUN_EXTENSION env has been set", func() {
+	context("When BP_UBI_RUN_IMAGE_OVERRIDE env has been set", func() {
 
 		it.Before(func() {
 
@@ -871,7 +871,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(os.RemoveAll(workingDir)).To(Succeed())
 		})
 
-		it("Should have the same value as the BP_NODE_RUN_EXTENSION if is not empty string", func() {
+		it("Should have the same value as the BP_UBI_RUN_IMAGE_OVERRIDE if is not empty string", func() {
 
 			extensionToml, _ := readExtensionTomlTemplateFile()
 
@@ -880,8 +880,8 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
 
 			entriesTests := []struct {
-				Entries               []packit.BuildpackPlanEntry
-				BP_NODE_RUN_EXTENSION string
+				Entries                   []packit.BuildpackPlanEntry
+				BP_UBI_RUN_IMAGE_OVERRIDE string
 			}{
 				{
 					Entries: []packit.BuildpackPlanEntry{
@@ -890,12 +890,12 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 							Metadata: map[string]interface{}{"version": ">0", "version-source": ".node-version"},
 						},
 					},
-					BP_NODE_RUN_EXTENSION: "testregistry/image-name",
+					BP_UBI_RUN_IMAGE_OVERRIDE: "testregistry/image-name",
 				},
 			}
 
 			for _, tt := range entriesTests {
-				t.Setenv("BP_NODE_RUN_EXTENSION", tt.BP_NODE_RUN_EXTENSION)
+				t.Setenv("BP_UBI_RUN_IMAGE_OVERRIDE", tt.BP_UBI_RUN_IMAGE_OVERRIDE)
 
 				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
@@ -910,7 +910,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				Expect(generateResult).NotTo(Equal(nil))
 
 				RunDockerfileProps := ubinodejsextension.RunDockerfileProps{
-					Source: tt.BP_NODE_RUN_EXTENSION,
+					Source: tt.BP_UBI_RUN_IMAGE_OVERRIDE,
 				}
 
 				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(RunDockerfileProps, runDockerfileTemplate)
@@ -930,9 +930,9 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
 
 			entriesTests := []struct {
-				Entries               []packit.BuildpackPlanEntry
-				selectedNodeVersion   int
-				BP_NODE_RUN_EXTENSION string
+				Entries                   []packit.BuildpackPlanEntry
+				selectedNodeVersion       int
+				BP_UBI_RUN_IMAGE_OVERRIDE string
 			}{
 				{
 					Entries: []packit.BuildpackPlanEntry{
@@ -941,13 +941,13 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 							Metadata: map[string]interface{}{"version": "16.*", "version-source": ".node-version"},
 						},
 					},
-					selectedNodeVersion:   16,
-					BP_NODE_RUN_EXTENSION: "",
+					selectedNodeVersion:       16,
+					BP_UBI_RUN_IMAGE_OVERRIDE: "",
 				},
 			}
 
 			for _, tt := range entriesTests {
-				t.Setenv("BP_NODE_RUN_EXTENSION", tt.BP_NODE_RUN_EXTENSION)
+				t.Setenv("BP_UBI_RUN_IMAGE_OVERRIDE", tt.BP_UBI_RUN_IMAGE_OVERRIDE)
 
 				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
