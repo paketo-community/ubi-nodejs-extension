@@ -35,7 +35,7 @@ Access your running application and enjoy :)
 
 ### Add more buildpacks on the build process
 
-Nothing stops you from adding [more buildpacks](https://github.com/orgs/paketo-buildpacks/repositories) during the build process such as [procfile](https://github.com/paketo-buildpacks/procfile), [ca-certificates](https://github.com/paketo-buildpacks/ca-certificates) etc.
+Feel free to add more [buildpacks](https://github.com/orgs/paketo-buildpacks/repositories); Although the majority of the buildpacks for nodejs are already included from the [nodejs buildpack](https://github.com/paketo-buildpacks/nodejs/blob/main/buildpack.toml).
 
 ### Build without the full builder
 
@@ -45,9 +45,7 @@ The [build-ubi-base](https://github.com/paketo-community/builder-ubi-base) build
 pack build test-app \
    --path ./app-dir \
    --extension docker.io/paketocommunity/ubi-nodejs-extension \
-   --buildpack paketo-buildpacks/node-engine \
-   --buildpack paketo-buildpacks/npm-install \
-   --buildpack paketo-community/build-plan \
+   --buildpack paketo-buildpacks/nodejs \
    --builder paketocommunity/builder-ubi-buildpackless-base
 ```
 
