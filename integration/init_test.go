@@ -109,10 +109,10 @@ func TestIntegration(t *testing.T) {
 
 	suite := spec.New("Integration", spec.Report(report.Terminal{}), spec.Parallel())
 	suite("FetchRunImageFromEnv", testFetchRunImageFromEnv)
+	suite("OpenSSL", testOpenSSL)
 	suite("OptimizeMemory", testOptimizeMemory)
 	suite("ProjectPath", testProjectPath)
 	suite("Provides", testProvides)
 	suite("Simple", testSimple)
-	suite("OpenSSL", testOpenSSL)
 	suite.Run(t)
 }
