@@ -60,6 +60,7 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 			WithEnv(map[string]string{"BP_NODE_OPTIMIZE_MEMORY": "true"}).
 			WithPullPolicy("always").
 			Execute(name, source)
+
 		Expect(err).NotTo(HaveOccurred(), logs.String())
 
 		container, err = docker.Container.Run.
