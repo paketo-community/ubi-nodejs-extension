@@ -14,33 +14,39 @@ source "${ROOT_DIR}/scripts/.util/tools.sh"
 source "${ROOT_DIR}/scripts/.util/print.sh"
 
 function main {
+  local version output token
+  token=""
 
   while [[ "${#}" != 0 ]]; do
     case "${1}" in
-    --version | -v)
-      version="${2}"
-      shift 2
-      ;;
+      --version|-v)
+        version="${2}"
+        shift 2
+        ;;
 
-    --output | -o)
-      output="${2}"
-      shift 2
-      ;;
+      --output|-o)
+        output="${2}"
+        shift 2
+        ;;
 
-    --help | -h)
-      shift 1
-      usage
-      exit 0
-      ;;
+      --token|-t)
+        token="${2}"
+        shift 2
+        ;;
 
-    "")
-      # skip if the argument is empty
-      shift 1
-      ;;
+      --help|-h)
+        shift 1
+        usage
+        exit 0
+        ;;
 
-    *)
-      util::print::error "unknown argument \"${1}\""
-      ;;
+      "")
+        # skip if the argument is empty
+        shift 1
+        ;;
+
+      *)
+        util::print::error "unknown argument \"${1}\""
     esac
   done
 
@@ -56,7 +62,7 @@ function main {
 
   repo::prepare
 
-  tools::install
+  tools::install "${token}"
 
   buildpack::archive "${version}"
   buildpackage::create "${output}"
@@ -72,6 +78,7 @@ OPTIONS
   --help               -h            prints the command usage
   --version <version>  -v <version>  specifies the version number to use when packaging the buildpack
   --output <output>    -o <output>   location to output the packaged buildpackage artifact (default: ${ROOT_DIR}/build/buildpackage.cnb)
+  --token <token>                    Token used to download assets from GitHub (e.g. jam, pack, etc) (optional)
 USAGE
 }
 
@@ -87,16 +94,20 @@ function repo::prepare() {
 }
 
 function tools::install() {
+  local token
+  token="${1}"
 
   util::tools::pack::install \
-    --directory "${BIN_DIR}"
+    --directory "${BIN_DIR}" \
+    --token "${token}"
 
   if [[ -f "${ROOT_DIR}/.libbuildpack" ]]; then
     util::tools::packager::install \
       --directory "${BIN_DIR}"
   else
     util::tools::jam::install \
-      --directory "${BIN_DIR}"
+      --directory "${BIN_DIR}" \
+      --token "${token}"
   fi
 }
 
