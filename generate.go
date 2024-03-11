@@ -52,35 +52,51 @@ type DependencyManager interface {
 
 func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
+
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
 		logger.Process("Resolving Node Engine version")
 
+		// Find the version with the highest priority
 		entryResolver := draft.NewPlanner()
-		entry, allEntries := libnodejs.ResolveNodeVersion(entryResolver.Resolve, context.Plan)
-		if entry.Name == "" {
+		highestPriorityNodeVersion, allNodeVersionsInPriorityOrder := libnodejs.ResolveNodeVersion(entryResolver.Resolve, context.Plan)
+		if highestPriorityNodeVersion.Name == "" {
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Node.js no longer requested by build plan")
 		}
 
-		logger.Candidates(allEntries)
-		version, _ := entry.Metadata["version"].(string)
+		logger.Candidates(allNodeVersionsInPriorityOrder)
+
+		// Search and fetch the version from the extension.toml
+		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
 		extensionFilePath := filepath.Join(context.CNBPath, "extension.toml")
-		dependency, err := dependencyManager.Resolve(extensionFilePath, entry.Name, version, context.Stack)
+		dependency, err := dependencyManager.Resolve(extensionFilePath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
 
-		sVersion, _ := semver.NewVersion(dependency.Version)
+		selectedNodeVersion, err := semver.NewVersion(dependency.Version)
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+		selectedNodeMajorVersion := selectedNodeVersion.Major()
 
-		NODEJS_VERSION := sVersion.Major()
+		var selectedNodeRunImage string
 
-		logger.Process("Selected Node Engine Major version %d", NODEJS_VERSION)
+		bpNodeRunExtension, bpNodeRunExtensionEnvExists := os.LookupEnv("BP_UBI_RUN_IMAGE_OVERRIDE")
+		if !bpNodeRunExtensionEnvExists || bpNodeRunExtension == "" {
+			selectedNodeRunImage = dependency.Source
+		} else {
+			logger.Process("Using run image specified by BP_UBI_RUN_IMAGE_OVERRIDE %s", bpNodeRunExtension)
+			selectedNodeRunImage = bpNodeRunExtension
+		}
+
+		logger.Process("Selected Node Engine Major version %d", selectedNodeMajorVersion)
 
 		// These variables have to be fetched from the env
 		CNB_STACK_ID := os.Getenv("CNB_STACK_ID")
 
 		// Generating build.Dockerfile
 		buildDockerfileContent, err := FillPropsToTemplate(BuildDockerfileProps{
-			NODEJS_VERSION: NODEJS_VERSION,
+			NODEJS_VERSION: selectedNodeMajorVersion,
 			CNB_USER_ID:    duringBuildPermissions.CNB_USER_ID,
 			CNB_GROUP_ID:   duringBuildPermissions.CNB_GROUP_ID,
 			CNB_STACK_ID:   CNB_STACK_ID,
@@ -93,7 +109,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		// Generating run.Dockerfile
 		runDockerfileContent, err := FillPropsToTemplate(RunDockerfileProps{
-			Source: dependency.Source,
+			Source: selectedNodeRunImage,
 		}, runDockerfileTemplate)
 
 		if err != nil {

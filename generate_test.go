@@ -846,6 +846,134 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		})
 	}, spec.Sequential())
 
+	context("When BP_UBI_RUN_IMAGE_OVERRIDE env has been set", func() {
+
+		it.Before(func() {
+
+			workingDir = t.TempDir()
+			cnbDir, err = os.MkdirTemp("", "cnb")
+
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
+
+			err = toml.NewEncoder(buf).Encode(testBuildPlan)
+			Expect(err).NotTo(HaveOccurred())
+
+			planPath = filepath.Join(workingDir, "plan")
+			t.Setenv("CNB_BP_PLAN_PATH", planPath)
+
+			Expect(os.WriteFile(planPath, buf.Bytes(), 0600)).To(Succeed())
+
+			err = os.Chdir(workingDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		it.After(func() {
+			Expect(os.RemoveAll(workingDir)).To(Succeed())
+		})
+
+		it("Should have the same value as the BP_UBI_RUN_IMAGE_OVERRIDE if is not empty string", func() {
+
+			extensionToml, _ := readExtensionTomlTemplateFile()
+
+			cnbDir, err = os.MkdirTemp("", "cnb")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+
+			entriesTests := []struct {
+				Entries                   []packit.BuildpackPlanEntry
+				BP_UBI_RUN_IMAGE_OVERRIDE string
+			}{
+				{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name:     "node",
+							Metadata: map[string]interface{}{"version": ">0", "version-source": ".node-version"},
+						},
+					},
+					BP_UBI_RUN_IMAGE_OVERRIDE: "testregistry/image-name",
+				},
+			}
+
+			for _, tt := range entriesTests {
+				t.Setenv("BP_UBI_RUN_IMAGE_OVERRIDE", tt.BP_UBI_RUN_IMAGE_OVERRIDE)
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					CNBPath:    cnbDir,
+					Plan: packit.BuildpackPlan{
+						Entries: tt.Entries,
+					},
+					Stack: "io.buildpacks.stacks.ubi8",
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(generateResult).NotTo(Equal(nil))
+
+				RunDockerfileProps := ubinodejsextension.RunDockerfileProps{
+					Source: tt.BP_UBI_RUN_IMAGE_OVERRIDE,
+				}
+
+				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(RunDockerfileProps, runDockerfileTemplate)
+
+				buf := new(strings.Builder)
+				_, _ = io.Copy(buf, generateResult.RunDockerfile)
+				Expect(buf.String()).To(Equal(runDockerfileContent))
+			}
+		})
+
+		it("Should fallback to the run image which corresponds to the selected node version during build", func() {
+
+			extensionToml, _ := readExtensionTomlTemplateFile()
+
+			cnbDir, err = os.MkdirTemp("", "cnb")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+
+			entriesTests := []struct {
+				Entries                   []packit.BuildpackPlanEntry
+				selectedNodeVersion       int
+				BP_UBI_RUN_IMAGE_OVERRIDE string
+			}{
+				{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name:     "node",
+							Metadata: map[string]interface{}{"version": "16.*", "version-source": ".node-version"},
+						},
+					},
+					selectedNodeVersion:       16,
+					BP_UBI_RUN_IMAGE_OVERRIDE: "",
+				},
+			}
+
+			for _, tt := range entriesTests {
+				t.Setenv("BP_UBI_RUN_IMAGE_OVERRIDE", tt.BP_UBI_RUN_IMAGE_OVERRIDE)
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					CNBPath:    cnbDir,
+					Plan: packit.BuildpackPlan{
+						Entries: tt.Entries,
+					},
+					Stack: "io.buildpacks.stacks.ubi8",
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(generateResult).NotTo(Equal(nil))
+
+				RunDockerfileProps := ubinodejsextension.RunDockerfileProps{
+					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.selectedNodeVersion),
+				}
+
+				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(RunDockerfileProps, runDockerfileTemplate)
+
+				buf := new(strings.Builder)
+				_, _ = io.Copy(buf, generateResult.RunDockerfile)
+				Expect(buf.String()).To(Equal(runDockerfileContent))
+			}
+		})
+	}, spec.Sequential())
+
 }
 
 func readExtensionTomlTemplateFile(defaultNodeVersion ...string) (string, error) {

@@ -35,7 +35,7 @@ Access your running application and enjoy :)
 
 ### Add more buildpacks on the build process
 
-Nothing stops you from adding [more buildpacks](https://github.com/orgs/paketo-buildpacks/repositories) during the build process such as [procfile](https://github.com/paketo-buildpacks/procfile), [ca-certificates](https://github.com/paketo-buildpacks/ca-certificates) etc.
+Feel free to add more [buildpacks](https://github.com/orgs/paketo-buildpacks/repositories); Although the majority of the buildpacks for nodejs are already included from the [nodejs buildpack](https://github.com/paketo-buildpacks/nodejs/blob/main/buildpack.toml).
 
 ### Build without the full builder
 
@@ -45,9 +45,7 @@ The [build-ubi-base](https://github.com/paketo-community/builder-ubi-base) build
 pack build test-app \
    --path ./app-dir \
    --extension docker.io/paketocommunity/ubi-nodejs-extension \
-   --buildpack paketo-buildpacks/node-engine \
-   --buildpack paketo-buildpacks/npm-install \
-   --buildpack paketo-community/build-plan \
+   --buildpack paketo-buildpacks/nodejs \
    --builder paketocommunity/builder-ubi-buildpackless-base
 ```
 
@@ -96,6 +94,17 @@ value = '~20'
 ### Specifying a project path
 
 To specify a project subdirectory to be used as the root of the app, please use the `BP_NODE_PROJECT_PATH` environment variable at build time either directly (ex. `pack build my-app --env BP_NODE_PROJECT_PATH=./src/my-app`) or through a [project.toml file](https://github.com/buildpacks/spec/blob/main/extensions/project-descriptor.md). This could be useful if your app is a part of a monorepo.
+
+### Setting explicitly a run image `BP_UBI_RUN_IMAGE_OVERRIDE`
+
+With `BP_UBI_RUN_IMAGE_OVERRIDE` environment variable, you are able to specify the run image of the built application, without changing the source code of the extension (specifically the extension.toml file) as shown on below example.
+
+```bash
+  pack build test-app-name \
+     --path ./app-dir \
+     --builder paketocommunity/builder-ubi-base \
+     --env BP_UBI_RUN_IMAGE_OVERRIDE="localhost:5000/my-run-image"
+```
 
 ## Run Tests
 

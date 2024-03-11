@@ -101,7 +101,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					"[extender (build)]   Configuring build environment",
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))
@@ -109,7 +109,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					`[extender (build)]   Configuring launch environment`,
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))
@@ -176,7 +176,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					"[extender (build)]   Configuring build environment",
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))
@@ -184,7 +184,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					`[extender (build)]   Configuring launch environment`,
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))
@@ -270,7 +270,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					"[extender (build)]   Configuring build environment",
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))
@@ -278,7 +278,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					`[extender (build)]   Configuring launch environment`,
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))
@@ -361,7 +361,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					"[extender (build)]   Configuring build environment",
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))
@@ -369,7 +369,7 @@ func testSimple(t *testing.T, context spec.G, it spec.S) {
 				Expect(logs).To(ContainLines(
 					`[extender (build)]   Configuring launch environment`,
 					`[extender (build)]     NODE_ENV     -> "production"`,
-					fmt.Sprintf(`[extender (build)]     NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+					`[extender (build)]     NODE_HOME    -> ""`,
 					`[extender (build)]     NODE_OPTIONS -> "--use-openssl-ca"`,
 					`[extender (build)]     NODE_VERBOSE -> "false"`,
 				))

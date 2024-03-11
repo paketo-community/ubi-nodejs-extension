@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/paketo-buildpacks/occam"
@@ -61,6 +60,7 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 			WithEnv(map[string]string{"BP_NODE_OPTIMIZE_MEMORY": "true"}).
 			WithPullPolicy("always").
 			Execute(name, source)
+
 		Expect(err).NotTo(HaveOccurred(), logs.String())
 
 		container, err = docker.Container.Run.
@@ -77,7 +77,7 @@ func testOptimizeMemory(t *testing.T, context spec.G, it spec.S) {
 		Expect(logs).To(ContainLines(
 			`[extender (build)]   Configuring launch environment`,
 			`[extender (build)]     NODE_ENV        -> "production"`,
-			fmt.Sprintf(`[extender (build)]     NODE_HOME       -> "/layers/%s/node"`, strings.ReplaceAll(settings.Buildpack.ID, "/", "_")),
+			`[extender (build)]     NODE_HOME       -> ""`,
 			`[extender (build)]     NODE_OPTIONS    -> "--use-openssl-ca"`,
 			`[extender (build)]     NODE_VERBOSE    -> "false"`,
 			`[extender (build)]     OPTIMIZE_MEMORY -> "true"`,
