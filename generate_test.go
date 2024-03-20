@@ -53,11 +53,11 @@ func testFillPropsToTemplate(t *testing.T, context spec.G, it spec.S) {
 				CNB_USER_ID:    1000,
 				CNB_GROUP_ID:   1000,
 				CNB_STACK_ID:   "",
-				PACKAGES:       "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which",
+				PACKAGES:       ubinodejsextension.PACKAGES,
 			}, buildDockerfileTemplate)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(Equal(`ARG base_image
+			Expect(output).To(Equal(fmt.Sprintf(`ARG base_image
 FROM ${base_image}
 
 USER root
@@ -66,12 +66,12 @@ ARG build_id=0
 RUN echo ${build_id}
 
 RUN microdnf -y module enable nodejs:16
-RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which && microdnf clean all
+RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y %s && microdnf clean all
 
 RUN echo uid:gid "1000:1000"
 USER 1000:1000
 
-RUN echo "CNB_STACK_ID: "`))
+RUN echo "CNB_STACK_ID: "`, ubinodejsextension.PACKAGES)))
 
 		})
 
@@ -843,6 +843,134 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 			}
 
+		})
+	}, spec.Sequential())
+
+	context("When BP_UBI_RUN_IMAGE_OVERRIDE env has been set", func() {
+
+		it.Before(func() {
+
+			workingDir = t.TempDir()
+			cnbDir, err = os.MkdirTemp("", "cnb")
+
+			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
+
+			err = toml.NewEncoder(buf).Encode(testBuildPlan)
+			Expect(err).NotTo(HaveOccurred())
+
+			planPath = filepath.Join(workingDir, "plan")
+			t.Setenv("CNB_BP_PLAN_PATH", planPath)
+
+			Expect(os.WriteFile(planPath, buf.Bytes(), 0600)).To(Succeed())
+
+			err = os.Chdir(workingDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		it.After(func() {
+			Expect(os.RemoveAll(workingDir)).To(Succeed())
+		})
+
+		it("Should have the same value as the BP_UBI_RUN_IMAGE_OVERRIDE if is not empty string", func() {
+
+			extensionToml, _ := readExtensionTomlTemplateFile()
+
+			cnbDir, err = os.MkdirTemp("", "cnb")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+
+			entriesTests := []struct {
+				Entries                   []packit.BuildpackPlanEntry
+				BP_UBI_RUN_IMAGE_OVERRIDE string
+			}{
+				{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name:     "node",
+							Metadata: map[string]interface{}{"version": ">0", "version-source": ".node-version"},
+						},
+					},
+					BP_UBI_RUN_IMAGE_OVERRIDE: "testregistry/image-name",
+				},
+			}
+
+			for _, tt := range entriesTests {
+				t.Setenv("BP_UBI_RUN_IMAGE_OVERRIDE", tt.BP_UBI_RUN_IMAGE_OVERRIDE)
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					CNBPath:    cnbDir,
+					Plan: packit.BuildpackPlan{
+						Entries: tt.Entries,
+					},
+					Stack: "io.buildpacks.stacks.ubi8",
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(generateResult).NotTo(Equal(nil))
+
+				RunDockerfileProps := ubinodejsextension.RunDockerfileProps{
+					Source: tt.BP_UBI_RUN_IMAGE_OVERRIDE,
+				}
+
+				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(RunDockerfileProps, runDockerfileTemplate)
+
+				buf := new(strings.Builder)
+				_, _ = io.Copy(buf, generateResult.RunDockerfile)
+				Expect(buf.String()).To(Equal(runDockerfileContent))
+			}
+		})
+
+		it("Should fallback to the run image which corresponds to the selected node version during build", func() {
+
+			extensionToml, _ := readExtensionTomlTemplateFile()
+
+			cnbDir, err = os.MkdirTemp("", "cnb")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+
+			entriesTests := []struct {
+				Entries                   []packit.BuildpackPlanEntry
+				selectedNodeVersion       int
+				BP_UBI_RUN_IMAGE_OVERRIDE string
+			}{
+				{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name:     "node",
+							Metadata: map[string]interface{}{"version": "16.*", "version-source": ".node-version"},
+						},
+					},
+					selectedNodeVersion:       16,
+					BP_UBI_RUN_IMAGE_OVERRIDE: "",
+				},
+			}
+
+			for _, tt := range entriesTests {
+				t.Setenv("BP_UBI_RUN_IMAGE_OVERRIDE", tt.BP_UBI_RUN_IMAGE_OVERRIDE)
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					CNBPath:    cnbDir,
+					Plan: packit.BuildpackPlan{
+						Entries: tt.Entries,
+					},
+					Stack: "io.buildpacks.stacks.ubi8",
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(generateResult).NotTo(Equal(nil))
+
+				RunDockerfileProps := ubinodejsextension.RunDockerfileProps{
+					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.selectedNodeVersion),
+				}
+
+				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(RunDockerfileProps, runDockerfileTemplate)
+
+				buf := new(strings.Builder)
+				_, _ = io.Copy(buf, generateResult.RunDockerfile)
+				Expect(buf.String()).To(Equal(runDockerfileContent))
+			}
 		})
 	}, spec.Sequential())
 

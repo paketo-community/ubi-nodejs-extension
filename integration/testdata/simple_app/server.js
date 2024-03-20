@@ -19,6 +19,10 @@ const server = http.createServer((request, response) => {
       response.end(process.version);
       break;
 
+    case '/version/major':
+      response.end(process.versions.node.split('.')[0]);
+      break;
+
     default:
       response.end("hello world");
   }
