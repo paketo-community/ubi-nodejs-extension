@@ -99,6 +99,8 @@ USAGE
 }
 
 function tools::install() {
+  local token
+  token="${1}"
 
   util::tools::pack::install \
     --directory "${BUILDPACKDIR}/.bin" \
@@ -146,14 +148,13 @@ function tests::run() {
   util::print::info "Using ${1} as builder..."
 
   export CGO_ENABLED=0
-  pack config experimental true
   pushd "${BUILDPACKDIR}" > /dev/null
-  if GOMAXPROCS="${GOMAXPROCS:-4}" go test -count=1 -timeout 0 ./integration/... -v -run Integration | tee "${2}"; then
-    util::print::info "** GO Test Succeeded with ${1}**"
-  else
-    util::print::error "** GO Test Failed with ${1}**"
-  fi
-  popd >/dev/null
+    if GOMAXPROCS="${GOMAXPROCS:-4}" go test -count=1 -timeout 0 ./integration/... -v -run Integration | tee "${2}"; then
+      util::print::info "** GO Test Succeeded with ${1}**"
+    else
+      util::print::error "** GO Test Failed with ${1}**"
+    fi
+  popd > /dev/null
 }
 
 main "${@:-}"
