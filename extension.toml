@@ -1,10 +1,10 @@
 api = "0.7"
 
 [extension]
+homepage = "https://github.com/paketo-community/ubi-nodejs-extension"
 id = "paketo-community/ubi-nodejs-extension"
 name = "Ubi Node.js Extension"
-version = "0.0.1"
-description = "This extension installs the appropriate nodejs runtime via dnf"
+description = "This extension installs the appropriate Node.js runtime via dnf"
 
 [metadata]
   pre-package = "./scripts/build.sh"
