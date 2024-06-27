@@ -38,7 +38,7 @@ jobs:
         printf "builders=%s\n" "${builders}" >> "$GITHUB_OUTPUT"
 
   integration:
-    name: Integration Tests with Builders
+    name: Integration Tests
     runs-on: ubuntu-22.04
     needs: unit
     strategy:
@@ -50,10 +50,8 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version: 'stable'
-
     - name: Checkout
       uses: actions/checkout@v3
-
     - name: Run Integration Tests
       run: ./scripts/integration.sh --builder ${{ matrix.builder }} --token ${{ github.token }}
       env:
@@ -98,8 +96,10 @@ jobs:
       run: ./scripts/package.sh --version "${{ steps.tag.outputs.tag }}"
     - name: Create Release Notes
       id: create-release-notes
-      run: |
-        echo "release_body=No release notes yet - working on it" >> "$GITHUB_OUTPUT"
+      uses: paketo-buildpacks/github-config/actions/release/notes@main
+      with:
+        repo: ${{ github.repository }}
+        token: ${{ secrets.PAKETO_BOT_GITHUB_TOKEN }}
     - name: Create Release
       uses: paketo-buildpacks/github-config/actions/release/create@main
       with:
