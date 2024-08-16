@@ -3,6 +3,9 @@ package ubinodejsextension
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,6 +13,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/semver/v3"
 	"github.com/paketo-buildpacks/libnodejs"
 	"github.com/paketo-buildpacks/packit/v2"
@@ -18,10 +22,34 @@ import (
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
 
-var PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
+const PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
 
-var DEFAULT_USER_ID = 1002
-var DEFAULT_GROUP_ID = 1000
+const DEFAULT_USER_ID = 1002
+const DEFAULT_GROUP_ID = 1000
+
+// TODO
+// Same struct as in images.json is on the stacks
+// Also we dont need all these fields, remove the unused ones.
+type StackImages struct {
+	Name                    string `json:"name"`
+	ConfigDir               string `json:"config_dir"`
+	OutputDir               string `json:"output_dir"`
+	BuildImage              string `json:"build_image"`
+	RunImage                string `json:"run_image"`
+	BuildReceiptFilename    string `json:"build_receipt_filename"`
+	RunReceiptFilename      string `json:"run_receipt_filename"`
+	CreateBuildImage        bool   `json:"create_build_image,omitempty"`
+	BaseBuildContainerImage string `json:"base_build_container_image,omitempty"`
+	BaseRunContainerImage   string `json:"base_run_container_image"`
+	Type                    string `json:"type,omitempty"`
+}
+
+type ImagesJson struct {
+	SupportUsns       bool          `json:"support_usns"`
+	UpdateOnNewImage  bool          `json:"update_on_new_image"`
+	ReceiptsShowLimit int           `json:"receipts_show_limit"`
+	StackImages       []StackImages `json:"images"`
+}
 
 type DuringBuildPermissions struct {
 	CNB_USER_ID, CNB_GROUP_ID int
@@ -65,10 +93,64 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Candidates(allNodeVersionsInPriorityOrder)
 
-		// Search and fetch the version from the extension.toml
+		imagesJsonPath, err := os.Open("/etc/buildpacks/images.json")
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+
+		var imagesJson ImagesJson
+		json.NewDecoder(imagesJsonPath).Decode(&imagesJson)
+		err = imagesJsonPath.Close()
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+
 		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
-		extensionFilePath := filepath.Join(context.CNBPath, "extension.toml")
-		dependency, err := dependencyManager.Resolve(extensionFilePath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
+
+		nodejsRegex, _ := regexp.Compile("^nodejs")
+
+		var dependencies []map[string]interface{}
+
+		for _, stack := range imagesJson.StackImages {
+			if !nodejsRegex.MatchString(stack.Name) {
+				continue
+			}
+
+			//TODO fetch the stacks from the images.json
+			nodeVersion := strings.Split(stack.Name, "-")[1]
+			dependency := map[string]interface{}{
+				"id":      "node",
+				"stacks":  []string{"io.buildpacks.stacks.ubi8"},
+				"version": fmt.Sprintf("%s.1000", nodeVersion),
+				"source":  fmt.Sprintf("paketocommunity/run-nodejs-%s-ubi-base", nodeVersion),
+			}
+			dependencies = append(dependencies, dependency)
+
+		}
+
+		config := map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"default-versions": map[string]string{
+					"node": "20.*.*",
+				},
+				"dependencies": dependencies,
+			},
+		}
+
+		buf := new(bytes.Buffer)
+		if err := toml.NewEncoder(buf).Encode(config); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(buf.String())
+
+		err = os.WriteFile("./config.toml", buf.Bytes(), 0744)
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+
+		// Search and fetch the version from the config.toml
+		configFilePath := filepath.Join("./config.toml")
+		dependency, err := dependencyManager.Resolve(configFilePath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
