@@ -23,32 +23,19 @@ import (
 )
 
 const PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
-
+const IMAGES_JSON_PATH = "/etc/buildpacks/images.json"
 const DEFAULT_USER_ID = 1002
 const DEFAULT_GROUP_ID = 1000
 
-// TODO
-// Same struct as in images.json is on the stacks
-// Also we dont need all these fields, remove the unused ones.
 type StackImages struct {
-	Name                    string `json:"name"`
-	ConfigDir               string `json:"config_dir"`
-	OutputDir               string `json:"output_dir"`
-	BuildImage              string `json:"build_image"`
-	RunImage                string `json:"run_image"`
-	BuildReceiptFilename    string `json:"build_receipt_filename"`
-	RunReceiptFilename      string `json:"run_receipt_filename"`
-	CreateBuildImage        bool   `json:"create_build_image,omitempty"`
-	BaseBuildContainerImage string `json:"base_build_container_image,omitempty"`
-	BaseRunContainerImage   string `json:"base_run_container_image"`
-	Type                    string `json:"type,omitempty"`
+	Name              string `json:"name"`
+	Type              string `json:"type,omitempty"`
+	IsDefaultRunImage bool   `json:"is_default_run_image,omitempty"`
+	nodeVersion       string
 }
 
 type ImagesJson struct {
-	SupportUsns       bool          `json:"support_usns"`
-	UpdateOnNewImage  bool          `json:"update_on_new_image"`
-	ReceiptsShowLimit int           `json:"receipts_show_limit"`
-	StackImages       []StackImages `json:"images"`
+	StackImages []StackImages `json:"images"`
 }
 
 type DuringBuildPermissions struct {
@@ -93,7 +80,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Candidates(allNodeVersionsInPriorityOrder)
 
-		imagesJsonPath, err := os.Open("/etc/buildpacks/images.json")
+		imagesJsonPath, err := os.Open(IMAGES_JSON_PATH)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
@@ -105,38 +92,52 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			return packit.GenerateResult{}, err
 		}
 
-		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
-
+		// Filter out the nodejs stacks based on the stack name
 		nodejsRegex, _ := regexp.Compile("^nodejs")
+
+		nodejsStacks := []StackImages{}
+		for _, stack := range imagesJson.StackImages {
+
+			if nodejsRegex.MatchString(stack.Name) {
+				//Get the node version from the stack name
+				stack.nodeVersion = strings.Split(stack.Name, "-")[1]
+
+				if stack.nodeVersion == "" {
+					return packit.GenerateResult{}, packit.Fail.WithMessage("Node.js version for stack %s not found", stack.Name)
+				}
+
+				nodejsStacks = append(nodejsStacks, stack)
+			}
+		}
 
 		var dependencies []map[string]interface{}
 
-		for _, stack := range imagesJson.StackImages {
-			if !nodejsRegex.MatchString(stack.Name) {
-				continue
-			}
-
-			//TODO fetch the stacks from the images.json
-			nodeVersion := strings.Split(stack.Name, "-")[1]
+		for _, stack := range nodejsStacks {
 			dependency := map[string]interface{}{
 				"id":      "node",
-				"stacks":  []string{"io.buildpacks.stacks.ubi8"},
-				"version": fmt.Sprintf("%s.1000", nodeVersion),
-				"source":  fmt.Sprintf("paketocommunity/run-nodejs-%s-ubi-base", nodeVersion),
+				"stacks":  []string{context.Stack},
+				"version": fmt.Sprintf("%s.1000", stack.nodeVersion),
+				"source":  fmt.Sprintf("paketocommunity/run-nodejs-%s-ubi-base", stack.nodeVersion),
 			}
 			dependencies = append(dependencies, dependency)
+		}
 
+		defaultNodeVersion := getDefaultNodeVersion(imagesJson)
+
+		if defaultNodeVersion == "" {
+			return packit.GenerateResult{}, packit.Fail.WithMessage("Default Node.js version not found")
 		}
 
 		config := map[string]interface{}{
 			"metadata": map[string]interface{}{
 				"default-versions": map[string]string{
-					"node": "20.*.*",
+					"node": fmt.Sprintf("%s.*.*", defaultNodeVersion),
 				},
 				"dependencies": dependencies,
 			},
 		}
 
+		//Generate config.toml to pass it on the Resolve function of the DependencyManager
 		buf := new(bytes.Buffer)
 		if err := toml.NewEncoder(buf).Encode(config); err != nil {
 			log.Fatal(err)
@@ -150,6 +151,8 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		// Search and fetch the version from the config.toml
 		configFilePath := filepath.Join("./config.toml")
+
+		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
 		dependency, err := dependencyManager.Resolve(configFilePath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, err
@@ -173,15 +176,12 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Process("Selected Node Engine Major version %d", selectedNodeMajorVersion)
 
-		// These variables have to be fetched from the env
-		CNB_STACK_ID := os.Getenv("CNB_STACK_ID")
-
 		// Generating build.Dockerfile
 		buildDockerfileContent, err := FillPropsToTemplate(BuildDockerfileProps{
 			NODEJS_VERSION: selectedNodeMajorVersion,
 			CNB_USER_ID:    duringBuildPermissions.CNB_USER_ID,
 			CNB_GROUP_ID:   duringBuildPermissions.CNB_GROUP_ID,
-			CNB_STACK_ID:   CNB_STACK_ID,
+			CNB_STACK_ID:   context.Stack,
 			PACKAGES:       PACKAGES,
 		}, buildDockerfileTemplate)
 
@@ -220,6 +220,15 @@ func FillPropsToTemplate(properties interface{}, templateString string) (result 
 	}
 
 	return buf.String(), nil
+}
+
+func getDefaultNodeVersion(imagesJson ImagesJson) string {
+	for _, stack := range imagesJson.StackImages {
+		if stack.IsDefaultRunImage == true {
+			return strings.Split(stack.Name, "-")[1]
+		}
+	}
+	return ""
 }
 
 func GetDuringBuildPermissions(filepath string) DuringBuildPermissions {
