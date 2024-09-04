@@ -86,7 +86,11 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 		}
 
 		var imagesJson ImagesJson
-		json.NewDecoder(imagesJsonPath).Decode(&imagesJson)
+		err = json.NewDecoder(imagesJsonPath).Decode(&imagesJson)
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+
 		err = imagesJsonPath.Close()
 		if err != nil {
 			return packit.GenerateResult{}, err
@@ -122,12 +126,13 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			dependencies = append(dependencies, dependency)
 		}
 
-		defaultNodeVersion := getDefaultNodeVersion(imagesJson)
+		defaultNodeVersion := getDefaultNodeVersion(nodejsStacks)
 
 		if defaultNodeVersion == "" {
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Default Node.js version not found")
 		}
 
+		//Construct config.toml file content to pass it on the Resolve function of the DependencyManager
 		config := map[string]interface{}{
 			"metadata": map[string]interface{}{
 				"default-versions": map[string]string{
@@ -137,7 +142,6 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			},
 		}
 
-		//Generate config.toml to pass it on the Resolve function of the DependencyManager
 		buf := new(bytes.Buffer)
 		if err := toml.NewEncoder(buf).Encode(config); err != nil {
 			log.Fatal(err)
@@ -149,7 +153,6 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			return packit.GenerateResult{}, err
 		}
 
-		// Search and fetch the version from the config.toml
 		configFilePath := filepath.Join("./config.toml")
 
 		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
@@ -222,9 +225,9 @@ func FillPropsToTemplate(properties interface{}, templateString string) (result 
 	return buf.String(), nil
 }
 
-func getDefaultNodeVersion(imagesJson ImagesJson) string {
-	for _, stack := range imagesJson.StackImages {
-		if stack.IsDefaultRunImage == true {
+func getDefaultNodeVersion(stacks []StackImages) string {
+	for _, stack := range stacks {
+		if stack.IsDefaultRunImage {
 			return strings.Split(stack.Name, "-")[1]
 		}
 	}
