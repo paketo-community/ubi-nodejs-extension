@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -23,7 +22,6 @@ import (
 )
 
 const PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
-const IMAGES_JSON_PATH = "/etc/buildpacks/images.json"
 const DEFAULT_USER_ID = 1002
 const DEFAULT_GROUP_ID = 1000
 
@@ -32,6 +30,10 @@ type StackImages struct {
 	Type              string `json:"type,omitempty"`
 	IsDefaultRunImage bool   `json:"is_default_run_image,omitempty"`
 	nodeVersion       string
+}
+
+type ImagesManager struct {
+	imagesJsonPath string
 }
 
 type ImagesJson struct {
@@ -65,7 +67,7 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
-func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions) packit.GenerateFunc {
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions, imagesManager ImagesManager) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
 
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
@@ -80,30 +82,19 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Candidates(allNodeVersionsInPriorityOrder)
 
-		imagesJsonPath, err := os.Open(IMAGES_JSON_PATH)
+		imagesJsonData, err := parseImagesJsonFile(imagesManager.imagesJsonPath)
 		if err != nil {
-			return packit.GenerateResult{}, err
-		}
-
-		var imagesJson ImagesJson
-		err = json.NewDecoder(imagesJsonPath).Decode(&imagesJson)
-		if err != nil {
-			return packit.GenerateResult{}, err
-		}
-
-		err = imagesJsonPath.Close()
-		if err != nil {
-			return packit.GenerateResult{}, err
+			return packit.GenerateResult{}, packit.Fail.WithMessage("Failed to parse images.json file: %s", err)
 		}
 
 		// Filter out the nodejs stacks based on the stack name
 		nodejsRegex, _ := regexp.Compile("^nodejs")
 
 		nodejsStacks := []StackImages{}
-		for _, stack := range imagesJson.StackImages {
+		for _, stack := range imagesJsonData.StackImages {
 
 			if nodejsRegex.MatchString(stack.Name) {
-				//Get the node version from the stack name
+				//Extract the node version from the stack name
 				stack.nodeVersion = strings.Split(stack.Name, "-")[1]
 
 				if stack.nodeVersion == "" {
@@ -132,31 +123,13 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Default Node.js version not found")
 		}
 
-		//Construct config.toml file content to pass it on the Resolve function of the DependencyManager
-		config := map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"default-versions": map[string]string{
-					"node": fmt.Sprintf("%s.*.*", defaultNodeVersion),
-				},
-				"dependencies": dependencies,
-			},
-		}
-
-		buf := new(bytes.Buffer)
-		if err := toml.NewEncoder(buf).Encode(config); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(buf.String())
-
-		err = os.WriteFile("./config.toml", buf.Bytes(), 0744)
+		configTomlPath, err := createConfigTomlFile(defaultNodeVersion, dependencies)
 		if err != nil {
-			return packit.GenerateResult{}, err
+			return packit.GenerateResult{}, packit.Fail.WithMessage("Failed to create config.toml file: %s", err)
 		}
-
-		configFilePath := filepath.Join("./config.toml")
 
 		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
-		dependency, err := dependencyManager.Resolve(configFilePath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
+		dependency, err := dependencyManager.Resolve(configTomlPath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
@@ -271,4 +244,51 @@ func GetDuringBuildPermissions(filepath string) DuringBuildPermissions {
 		CNB_USER_ID:  CNB_USER_ID,
 		CNB_GROUP_ID: CNB_GROUP_ID,
 	}
+}
+
+func NewImagesManager(imagesJsonPath string) ImagesManager {
+	return ImagesManager{
+		imagesJsonPath: imagesJsonPath,
+	}
+}
+
+func parseImagesJsonFile(imagesJsonPath string) (ImagesJson, error) {
+	filepath, err := os.Open(imagesJsonPath)
+	if err != nil {
+		return ImagesJson{}, err
+	}
+
+	defer filepath.Close()
+
+	var imagesJsonData ImagesJson
+	err = json.NewDecoder(filepath).Decode(&imagesJsonData)
+	if err != nil {
+		return ImagesJson{}, err
+	}
+
+	return imagesJsonData, nil
+}
+
+func createConfigTomlFile(defaultNodeVersion string, dependencies []map[string]interface{}) (string, error) {
+	configTomlPath := "./config.toml"
+	config := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"default-versions": map[string]string{
+				"node": fmt.Sprintf("%s.*.*", defaultNodeVersion),
+			},
+			"dependencies": dependencies,
+		},
+	}
+
+	buf := new(bytes.Buffer)
+	if err := toml.NewEncoder(buf).Encode(config); err != nil {
+		return "", err
+	}
+
+	err := os.WriteFile(configTomlPath, buf.Bytes(), 0744)
+	if err != nil {
+		return "", err
+	}
+
+	return configTomlPath, nil
 }
