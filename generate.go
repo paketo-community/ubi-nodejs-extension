@@ -87,34 +87,9 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Failed to parse images.json file: %s", err)
 		}
 
-		// Filter out the nodejs stacks based on the stack name
-		nodejsRegex, _ := regexp.Compile("^nodejs")
-
-		nodejsStacks := []StackImages{}
-		for _, stack := range imagesJsonData.StackImages {
-
-			if nodejsRegex.MatchString(stack.Name) {
-				//Extract the node version from the stack name
-				stack.nodeVersion = strings.Split(stack.Name, "-")[1]
-
-				if stack.nodeVersion == "" {
-					return packit.GenerateResult{}, packit.Fail.WithMessage("Node.js version for stack %s not found", stack.Name)
-				}
-
-				nodejsStacks = append(nodejsStacks, stack)
-			}
-		}
-
-		var dependencies []map[string]interface{}
-
-		for _, stack := range nodejsStacks {
-			dependency := map[string]interface{}{
-				"id":      "node",
-				"stacks":  []string{context.Stack},
-				"version": fmt.Sprintf("%s.1000", stack.nodeVersion),
-				"source":  fmt.Sprintf("paketocommunity/run-nodejs-%s-ubi-base", stack.nodeVersion),
-			}
-			dependencies = append(dependencies, dependency)
+		nodejsStacks, err := getNodejsStackImages(imagesJsonData)
+		if err != nil {
+			return packit.GenerateResult{}, err
 		}
 
 		defaultNodeVersion := getDefaultNodeVersion(nodejsStacks)
@@ -123,7 +98,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Default Node.js version not found")
 		}
 
-		configTomlPath, err := createConfigTomlFile(defaultNodeVersion, dependencies)
+		configTomlPath, err := createConfigTomlFile(defaultNodeVersion, nodejsStacks, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Failed to create config.toml file: %s", err)
 		}
@@ -269,7 +244,20 @@ func parseImagesJsonFile(imagesJsonPath string) (ImagesJson, error) {
 	return imagesJsonData, nil
 }
 
-func createConfigTomlFile(defaultNodeVersion string, dependencies []map[string]interface{}) (string, error) {
+func createConfigTomlFile(defaultNodeVersion string, nodejsStacks []StackImages, stackId string) (string, error) {
+
+	var dependencies []map[string]interface{}
+
+	for _, stack := range nodejsStacks {
+		dependency := map[string]interface{}{
+			"id":      "node",
+			"stacks":  []string{stackId},
+			"version": fmt.Sprintf("%s.1000", stack.nodeVersion),
+			"source":  fmt.Sprintf("paketocommunity/run-nodejs-%s-ubi-base", stack.nodeVersion),
+		}
+		dependencies = append(dependencies, dependency)
+	}
+
 	configTomlPath := "./config.toml"
 	config := map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -291,4 +279,26 @@ func createConfigTomlFile(defaultNodeVersion string, dependencies []map[string]i
 	}
 
 	return configTomlPath, nil
+}
+
+func getNodejsStackImages(imagesJsonData ImagesJson) ([]StackImages, error) {
+
+	// Filter out the nodejs stacks based on the stack name
+	nodejsRegex, _ := regexp.Compile("^nodejs")
+
+	nodejsStacks := []StackImages{}
+	for _, stack := range imagesJsonData.StackImages {
+
+		if nodejsRegex.MatchString(stack.Name) {
+			//Extract the node version from the stack name
+			stack.nodeVersion = strings.Split(stack.Name, "-")[1]
+
+			if stack.nodeVersion == "" {
+				packit.Fail.WithMessage("Node.js version for stack %s not found", stack.Name)
+			}
+
+			nodejsStacks = append(nodejsStacks, stack)
+		}
+	}
+	return nodejsStacks, nil
 }
