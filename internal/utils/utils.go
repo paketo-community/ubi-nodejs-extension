@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/paketo-community/ubi-nodejs-extension/structs"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -110,4 +112,43 @@ func ParseImagesJsonFile(imagesJsonPath string) (ImagesJson, error) {
 	}
 
 	return imagesJsonData, nil
+}
+
+func GetDuringBuildPermissions(filepath string) structs.DuringBuildPermissions {
+
+	defaultPermissions := structs.DuringBuildPermissions{
+		CNB_USER_ID:  1002,
+		CNB_GROUP_ID: 1000,
+	}
+	re := regexp.MustCompile(`cnb:x:(\d+):(\d+)::`)
+
+	etcPasswdFile, err := os.ReadFile(filepath)
+
+	if err != nil {
+		return defaultPermissions
+	}
+	etcPasswdContent := string(etcPasswdFile)
+
+	matches := re.FindStringSubmatch(etcPasswdContent)
+
+	if len(matches) != 3 {
+		return defaultPermissions
+	}
+
+	CNB_USER_ID, err := strconv.Atoi(matches[1])
+
+	if err != nil {
+		return defaultPermissions
+	}
+
+	CNB_GROUP_ID, err := strconv.Atoi(matches[2])
+
+	if err != nil {
+		return defaultPermissions
+	}
+
+	return structs.DuringBuildPermissions{
+		CNB_USER_ID:  CNB_USER_ID,
+		CNB_GROUP_ID: CNB_GROUP_ID,
+	}
 }

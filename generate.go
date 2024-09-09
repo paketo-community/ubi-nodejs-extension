@@ -4,12 +4,11 @@ import (
 	"bytes"
 	_ "embed"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
+	"github.com/paketo-community/ubi-nodejs-extension/structs"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/paketo-buildpacks/libnodejs"
@@ -24,25 +23,11 @@ const DEFAULT_USER_ID = 1002
 const DEFAULT_GROUP_ID = 1000
 const CONFIG_TOML_PATH = "/tmp/config.toml"
 
-type DuringBuildPermissions struct {
-	CNB_USER_ID, CNB_GROUP_ID int
-}
-
 //go:embed templates/build.Dockerfile
 var buildDockerfileTemplate string
 
-type BuildDockerfileProps struct {
-	NODEJS_VERSION            uint64
-	CNB_USER_ID, CNB_GROUP_ID int
-	CNB_STACK_ID, PACKAGES    string
-}
-
 //go:embed templates/run.Dockerfile
 var runDockerfileTemplate string
-
-type RunDockerfileProps struct {
-	Source string
-}
 
 //go:generate faux --interface DependencyManager --output fakes/dependency_manager.go
 type DependencyManager interface {
@@ -51,7 +36,7 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
-func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions, imagesJsonPath string) packit.GenerateFunc {
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions structs.DuringBuildPermissions, imagesJsonPath string) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
 
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
@@ -118,7 +103,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 		logger.Process("Selected Node Engine Major version %d", selectedNodeMajorVersion)
 
 		// Generating build.Dockerfile
-		buildDockerfileContent, err := FillPropsToTemplate(BuildDockerfileProps{
+		buildDockerfileContent, err := FillPropsToTemplate(structs.BuildDockerfileProps{
 			NODEJS_VERSION: selectedNodeMajorVersion,
 			CNB_USER_ID:    duringBuildPermissions.CNB_USER_ID,
 			CNB_GROUP_ID:   duringBuildPermissions.CNB_GROUP_ID,
@@ -131,7 +116,7 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 		}
 
 		// Generating run.Dockerfile
-		runDockerfileContent, err := FillPropsToTemplate(RunDockerfileProps{
+		runDockerfileContent, err := FillPropsToTemplate(structs.RunDockerfileProps{
 			Source: selectedNodeRunImage,
 		}, runDockerfileTemplate)
 
@@ -161,43 +146,4 @@ func FillPropsToTemplate(properties interface{}, templateString string) (result 
 	}
 
 	return buf.String(), nil
-}
-
-func GetDuringBuildPermissions(filepath string) DuringBuildPermissions {
-
-	defaultPermissions := DuringBuildPermissions{
-		CNB_USER_ID:  DEFAULT_USER_ID,
-		CNB_GROUP_ID: DEFAULT_GROUP_ID,
-	}
-	re := regexp.MustCompile(`cnb:x:(\d+):(\d+)::`)
-
-	etcPasswdFile, err := os.ReadFile(filepath)
-
-	if err != nil {
-		return defaultPermissions
-	}
-	etcPasswdContent := string(etcPasswdFile)
-
-	matches := re.FindStringSubmatch(etcPasswdContent)
-
-	if len(matches) != 3 {
-		return defaultPermissions
-	}
-
-	CNB_USER_ID, err := strconv.Atoi(matches[1])
-
-	if err != nil {
-		return defaultPermissions
-	}
-
-	CNB_GROUP_ID, err := strconv.Atoi(matches[2])
-
-	if err != nil {
-		return defaultPermissions
-	}
-
-	return DuringBuildPermissions{
-		CNB_USER_ID:  CNB_USER_ID,
-		CNB_GROUP_ID: CNB_GROUP_ID,
-	}
 }

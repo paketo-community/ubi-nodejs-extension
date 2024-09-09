@@ -14,6 +14,8 @@ import (
 	"github.com/paketo-buildpacks/packit/cargo"
 	"github.com/paketo-buildpacks/packit/v2"
 	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
+	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
+	"github.com/paketo-community/ubi-nodejs-extension/structs"
 	"github.com/sclevine/spec"
 
 	"github.com/paketo-buildpacks/packit/v2/scribe"
@@ -123,10 +125,10 @@ cnb:x:1234:2345::/home/cnb:/bin/bash
 nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 `), 0600)).To(Succeed())
 
-			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
+			duringBuilderPermissions := utils.GetDuringBuildPermissions(path)
 
 			Expect(duringBuilderPermissions).To(Equal(
-				ubinodejsextension.DuringBuildPermissions{
+				structs.DuringBuildPermissions{
 					CNB_USER_ID:  1234,
 					CNB_GROUP_ID: 2345,
 				},
@@ -157,10 +159,10 @@ ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
 nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 `), 0600)).To(Succeed())
 
-			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(path)
+			duringBuilderPermissions := utils.GetDuringBuildPermissions(path)
 
 			Expect(duringBuilderPermissions).To(Equal(
-				ubinodejsextension.DuringBuildPermissions{
+				structs.DuringBuildPermissions{
 					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
 					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
 			))
@@ -173,10 +175,10 @@ nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 			tmpDir, err = os.MkdirTemp("", "")
 			Expect(err).NotTo(HaveOccurred())
 
-			duringBuilderPermissions := ubinodejsextension.GetDuringBuildPermissions(tmpDir)
+			duringBuilderPermissions := utils.GetDuringBuildPermissions(tmpDir)
 
 			Expect(duringBuilderPermissions).To(Equal(
-				ubinodejsextension.DuringBuildPermissions{
+				structs.DuringBuildPermissions{
 					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
 					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
 			))
@@ -213,7 +215,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				"/path/to/images.json")
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
@@ -277,7 +279,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				imagesJsonPath,
 			)
 
@@ -354,12 +356,12 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				runDockerFileProps := ubinodejsextension.RunDockerfileProps{
+				runDockerFileProps := structs.RunDockerfileProps{
 					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.expectedNodeVersion),
 				}
 				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(runDockerFileProps, runDockerfileTemplate)
 
-				buildDockerfileProps := ubinodejsextension.BuildDockerfileProps{
+				buildDockerfileProps := structs.BuildDockerfileProps{
 					CNB_USER_ID:    1002,
 					CNB_GROUP_ID:   1000,
 					CNB_STACK_ID:   "io.buildpacks.stacks.ubi8",
@@ -389,7 +391,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				imagesJsonPath,
 			)
 
@@ -439,12 +441,12 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				runDockerFileProps := ubinodejsextension.RunDockerfileProps{
+				runDockerFileProps := structs.RunDockerfileProps{
 					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.expectedNodeVersion),
 				}
 
 				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(runDockerFileProps, runDockerfileTemplate)
-				buildDockerfileProps := ubinodejsextension.BuildDockerfileProps{
+				buildDockerfileProps := structs.BuildDockerfileProps{
 					CNB_USER_ID:    1002,
 					CNB_GROUP_ID:   1000,
 					CNB_STACK_ID:   "io.buildpacks.stacks.ubi8",
@@ -474,7 +476,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				imagesJsonPath,
 			)
 
@@ -514,12 +516,12 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				runDockerFileProps := ubinodejsextension.RunDockerfileProps{
+				runDockerFileProps := structs.RunDockerfileProps{
 					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.expectedNodeVersion),
 				}
 				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(runDockerFileProps, runDockerfileTemplate)
 
-				buildDockerfileProps := ubinodejsextension.BuildDockerfileProps{
+				buildDockerfileProps := structs.BuildDockerfileProps{
 					CNB_USER_ID:    1002,
 					CNB_GROUP_ID:   1000,
 					CNB_STACK_ID:   "io.buildpacks.stacks.ubi8",
@@ -548,7 +550,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				imagesJsonPath,
 			)
 
@@ -637,13 +639,13 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				imagesJsonPath,
 			)
 
 			entriesTests := []struct {
 				Entries            []packit.BuildpackPlanEntry
-				RunDockerfileProps ubinodejsextension.RunDockerfileProps
+				RunDockerfileProps structs.RunDockerfileProps
 			}{
 				{
 					Entries: []packit.BuildpackPlanEntry{
@@ -664,7 +666,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 							Metadata: map[string]interface{}{"version": "=16", "version-source": "BP_NODE_VERSION"},
 						},
 					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
+					RunDockerfileProps: structs.RunDockerfileProps{
 						Source: "paketocommunity/run-nodejs-16-ubi-base",
 					},
 				},
@@ -683,7 +685,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 							Metadata: map[string]interface{}{"version": "=16", "version-source": "package.json"},
 						},
 					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
+					RunDockerfileProps: structs.RunDockerfileProps{
 						Source: "paketocommunity/run-nodejs-16-ubi-base",
 					},
 				},
@@ -694,7 +696,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 							Metadata: map[string]interface{}{"version": "=16", "version-source": ".node-version"},
 						},
 					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
+					RunDockerfileProps: structs.RunDockerfileProps{
 						Source: "paketocommunity/run-nodejs-16-ubi-base",
 					},
 				},
@@ -755,7 +757,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				imagesJsonPath,
 			)
 
@@ -788,7 +790,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				RunDockerfileProps := ubinodejsextension.RunDockerfileProps{
+				RunDockerfileProps := structs.RunDockerfileProps{
 					Source: tt.BP_UBI_RUN_IMAGE_OVERRIDE,
 				}
 
@@ -810,7 +812,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
 				logger,
-				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				structs.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
 				imagesJsonPath,
 			)
 
@@ -845,7 +847,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				RunDockerfileProps := ubinodejsextension.RunDockerfileProps{
+				RunDockerfileProps := structs.RunDockerfileProps{
 					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.selectedNodeVersion),
 				}
 
@@ -888,26 +890,6 @@ func generateImagesJsonFile(defaultNodeVersion string) string {
         "create_build_image": true,
         "base_build_container_image": "docker://registry.access.redhat.com/ubi8/ubi-minimal",
         "base_run_container_image": "docker://registry.access.redhat.com/ubi8/ubi-minimal"
-      },
-      {
-        "name": "java-8",
-        "config_dir": "stack-java-8",
-        "output_dir": "build-java-8",
-        "build_image": "build-java-8",
-        "run_image": "run-java-8",
-        "build_receipt_filename": "build-java-8-receipt.cyclonedx.json",
-        "run_receipt_filename": "run-java-8-receipt.cyclonedx.json",
-        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/openjdk-8-runtime"
-      },
-      {
-        "name": "java-11",
-        "config_dir": "stack-java-11",
-        "output_dir": "build-java-11",
-        "build_image": "build-java-11",
-        "run_image": "run-java-11",
-        "build_receipt_filename": "build-java-11-receipt.cyclonedx.json",
-        "run_receipt_filename": "run-java-11-receipt.cyclonedx.json",
-        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/openjdk-11-runtime"
       },
       {
         "name": "java-17",
