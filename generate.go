@@ -3,16 +3,14 @@ package ubinodejsextension
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
-	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
 
-	"github.com/BurntSushi/toml"
+	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/paketo-buildpacks/libnodejs"
 	"github.com/paketo-buildpacks/packit/v2"
@@ -24,21 +22,7 @@ import (
 const PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
 const DEFAULT_USER_ID = 1002
 const DEFAULT_GROUP_ID = 1000
-
-type StackImages struct {
-	Name              string `json:"name"`
-	Type              string `json:"type,omitempty"`
-	IsDefaultRunImage bool   `json:"is_default_run_image,omitempty"`
-	nodeVersion       string
-}
-
-type ImagesManager struct {
-	imagesJsonPath string
-}
-
-type ImagesJson struct {
-	StackImages []StackImages `json:"images"`
-}
+const CONFIG_TOML_PATH = "/tmp/config.toml"
 
 type DuringBuildPermissions struct {
 	CNB_USER_ID, CNB_GROUP_ID int
@@ -67,7 +51,7 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
-func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions, imagesManager ImagesManager) packit.GenerateFunc {
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions, imagesJsonPath string) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
 
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
@@ -82,29 +66,29 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Candidates(allNodeVersionsInPriorityOrder)
 
-		imagesJsonData, err := parseImagesJsonFile(imagesManager.imagesJsonPath)
+		imagesJsonData, err := utils.ParseImagesJsonFile(imagesJsonPath)
 		if err != nil {
 			return packit.GenerateResult{}, packit.Fail.WithMessage("Failed to parse images.json file: %s", err)
 		}
 
-		nodejsStacks, err := getNodejsStackImages(imagesJsonData)
+		nodejsStacks, err := utils.GetNodejsStackImages(imagesJsonData)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
 
-		defaultNodeVersion := getDefaultNodeVersion(nodejsStacks)
+		defaultNodeVersion, err := utils.GetDefaultNodeVersion(nodejsStacks)
 
-		if defaultNodeVersion == "" {
-			return packit.GenerateResult{}, packit.Fail.WithMessage("Default Node.js version not found")
+		if err != nil {
+			return packit.GenerateResult{}, err
 		}
 
-		configTomlPath, err := createConfigTomlFile(defaultNodeVersion, nodejsStacks, context.Stack)
+		configTomlFileContent, err := utils.CreateConfigTomlFileContent(defaultNodeVersion, nodejsStacks, context.Stack)
 		if err != nil {
-			return packit.GenerateResult{}, packit.Fail.WithMessage("Failed to create config.toml file: %s", err)
+			return packit.GenerateResult{}, err
 		}
 
 		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
-		dependency, err := dependencyManager.Resolve(configTomlPath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
+		dependency, err := dependencyManager.Resolve(CONFIG_TOML_PATH, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
@@ -173,15 +157,6 @@ func FillPropsToTemplate(properties interface{}, templateString string) (result 
 	return buf.String(), nil
 }
 
-func getDefaultNodeVersion(stacks []StackImages) string {
-	for _, stack := range stacks {
-		if stack.IsDefaultRunImage {
-			return strings.Split(stack.Name, "-")[1]
-		}
-	}
-	return ""
-}
-
 func GetDuringBuildPermissions(filepath string) DuringBuildPermissions {
 
 	defaultPermissions := DuringBuildPermissions{
@@ -219,86 +194,4 @@ func GetDuringBuildPermissions(filepath string) DuringBuildPermissions {
 		CNB_USER_ID:  CNB_USER_ID,
 		CNB_GROUP_ID: CNB_GROUP_ID,
 	}
-}
-
-func NewImagesManager(imagesJsonPath string) ImagesManager {
-	return ImagesManager{
-		imagesJsonPath: imagesJsonPath,
-	}
-}
-
-func parseImagesJsonFile(imagesJsonPath string) (ImagesJson, error) {
-	filepath, err := os.Open(imagesJsonPath)
-	if err != nil {
-		return ImagesJson{}, err
-	}
-
-	defer filepath.Close()
-
-	var imagesJsonData ImagesJson
-	err = json.NewDecoder(filepath).Decode(&imagesJsonData)
-	if err != nil {
-		return ImagesJson{}, err
-	}
-
-	return imagesJsonData, nil
-}
-
-func createConfigTomlFile(defaultNodeVersion string, nodejsStacks []StackImages, stackId string) (string, error) {
-
-	var dependencies []map[string]interface{}
-
-	for _, stack := range nodejsStacks {
-		dependency := map[string]interface{}{
-			"id":      "node",
-			"stacks":  []string{stackId},
-			"version": fmt.Sprintf("%s.1000", stack.nodeVersion),
-			"source":  fmt.Sprintf("paketocommunity/run-nodejs-%s-ubi-base", stack.nodeVersion),
-		}
-		dependencies = append(dependencies, dependency)
-	}
-
-	configTomlPath := "./config.toml"
-	config := map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"default-versions": map[string]string{
-				"node": fmt.Sprintf("%s.*.*", defaultNodeVersion),
-			},
-			"dependencies": dependencies,
-		},
-	}
-
-	buf := new(bytes.Buffer)
-	if err := toml.NewEncoder(buf).Encode(config); err != nil {
-		return "", err
-	}
-
-	err := os.WriteFile(configTomlPath, buf.Bytes(), 0744)
-	if err != nil {
-		return "", err
-	}
-
-	return configTomlPath, nil
-}
-
-func getNodejsStackImages(imagesJsonData ImagesJson) ([]StackImages, error) {
-
-	// Filter out the nodejs stacks based on the stack name
-	nodejsRegex, _ := regexp.Compile("^nodejs")
-
-	nodejsStacks := []StackImages{}
-	for _, stack := range imagesJsonData.StackImages {
-
-		if nodejsRegex.MatchString(stack.Name) {
-			//Extract the node version from the stack name
-			stack.nodeVersion = strings.Split(stack.Name, "-")[1]
-
-			if stack.nodeVersion == "" {
-				packit.Fail.WithMessage("Node.js version for stack %s not found", stack.Name)
-			}
-
-			nodejsStacks = append(nodejsStacks, stack)
-		}
-	}
-	return nodejsStacks, nil
 }
