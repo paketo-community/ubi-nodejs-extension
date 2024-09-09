@@ -87,6 +87,12 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			return packit.GenerateResult{}, err
 		}
 
+		//save config.toml file
+		err = os.WriteFile(CONFIG_TOML_PATH, configTomlFileContent.Bytes(), 0644)
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+
 		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
 		dependency, err := dependencyManager.Resolve(CONFIG_TOML_PATH, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
 		if err != nil {
