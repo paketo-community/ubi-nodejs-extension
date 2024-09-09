@@ -90,7 +90,7 @@ RUN echo "CNB_STACK_ID: "`, ubinodejsextension.PACKAGES)))
 	})
 }
 
-func testFetchingPermissionsFromEtchPasswdFile(t *testing.T, context spec.G, it spec.S) {
+func testFetchingPermissionsFromEtcPasswdFile(t *testing.T, context spec.G, it spec.S) {
 
 	var (
 		Expect = NewWithT(t).Expect
@@ -128,7 +128,8 @@ nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 			Expect(duringBuilderPermissions).To(Equal(
 				ubinodejsextension.DuringBuildPermissions{
 					CNB_USER_ID:  1234,
-					CNB_GROUP_ID: 2345},
+					CNB_GROUP_ID: 2345,
+				},
 			))
 		})
 	})
@@ -186,20 +187,15 @@ nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 	var (
-		Expect               = NewWithT(t).Expect
-		workingDir           string
-		planPath             string
-		testBuildPlan        packit.BuildpackPlan
-		buf                  = new(bytes.Buffer)
-		generateResult       packit.GenerateResult
-		err                  error
-		cnbDir               string
-		BuildDockerfileProps = ubinodejsextension.BuildDockerfileProps{
-			CNB_USER_ID:  1002,
-			CNB_GROUP_ID: 1000,
-			CNB_STACK_ID: "",
-			PACKAGES:     ubinodejsextension.PACKAGES,
-		}
+		Expect            = NewWithT(t).Expect
+		workingDir        string
+		imagesJsonTmpDir  string
+		imagesJsonPath    string
+		planPath          string
+		testBuildPlan     packit.BuildpackPlan
+		buf               = new(bytes.Buffer)
+		generateResult    packit.GenerateResult
+		err               error
 		generate          packit.GenerateFunc
 		buffer            *bytes.Buffer
 		logger            scribe.Emitter
@@ -212,17 +208,18 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		dependencyManager = postal.NewService(cargo.NewTransport())
 	})
 
-	context("Generate called with NO node in buildplan", func() {
+	context("Generate called with NO node in build plan", func() {
 		it.Before(func() {
-
-			workingDir = t.TempDir()
-			Expect(err).NotTo(HaveOccurred())
-
-			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				"/path/to/images.json")
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
 
+			workingDir := t.TempDir()
 			Expect(os.WriteFile(filepath.Join(workingDir, "plan"), buf.Bytes(), 0600)).To(Succeed())
 
 			err = os.Chdir(workingDir)
@@ -233,7 +230,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			Expect(os.RemoveAll(workingDir)).To(Succeed())
 		})
 
-		it("Node no longer requested in buildplan", func() {
+		it("the extension should exit with an error", func() {
 
 			generateResult, err = generate(packit.GenerateContext{
 				WorkingDir: workingDir,
@@ -241,21 +238,20 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 					Entries: []packit.BuildpackPlanEntry{},
 				},
 			})
+
 			Expect(err).To(HaveOccurred())
-			Expect(generateResult.BuildDockerfile).To(BeNil())
+			Expect(err.Error()).To(ContainSubstring("Node.js no longer requested by build plan"))
+			Expect(generateResult).To(Equal(packit.GenerateResult{}))
 		})
 	}, spec.Sequential())
 
-	context("Generate called with node in the buildplan", func() {
+	context("Generate called with node in the build plan", func() {
 		it.Before(func() {
-
-			workingDir = t.TempDir()
-			cnbDir, err = os.MkdirTemp("", "cnb")
-
-			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
+
+			workingDir = t.TempDir()
 
 			planPath = filepath.Join(workingDir, "plan")
 			t.Setenv("CNB_BP_PLAN_PATH", planPath)
@@ -268,179 +264,110 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 		it.After(func() {
 			Expect(os.RemoveAll(workingDir)).To(Succeed())
+			Expect(os.RemoveAll(imagesJsonTmpDir)).To(Succeed())
 		})
 
 		it("Specific version of node requested", func() {
 
-			extensionToml, _ := readExtensionTomlTemplateFile()
+			imagesJsonContent := generateImagesJsonFile("18")
+			imagesJsonTmpDir = t.TempDir()
+			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
 
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				imagesJsonPath,
+			)
 
 			versionTests := []struct {
-				Name                                 string
-				Metadata                             map[string]interface{}
-				RunDockerfileProps                   ubinodejsextension.RunDockerfileProps
-				BuildDockerfileProps                 ubinodejsextension.BuildDockerfileProps
-				buildDockerfileExpectedNodejsVersion int
+				requestedNodeVersion string
+				expectedNodeVersion  int
 			}{
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "16 - 18",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: "16 - 18",
+					expectedNodeVersion:  18,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "16.0.0 - 18.0.0",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "16.0.0 - 18.0.0",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "<18.5.1",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "<18.5.1",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        ">18.5.1",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: ">18.5.1",
+					expectedNodeVersion:  18,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "16 <18.5.1",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "16 <18.5.1",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "<1.0.0 || >=2.5.2 <3.0.0 || >=2.3.1 <18.4.5",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "<1.0.0 || >=2.5.2 <3.0.0 || >=2.3.1 <18.4.5",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "v18",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: "v18",
+					expectedNodeVersion:  18,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "16",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "16",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "18",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: "18",
+					expectedNodeVersion:  18,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "~16",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "~16",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "^18.0.x",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: "^18.0.x",
+					expectedNodeVersion:  18,
 				},
 			}
 
 			for _, tt := range versionTests {
 
-				generateResult, err = generate(packit.GenerateContext{
-					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{
-								Name:     tt.Name,
-								Metadata: tt.Metadata,
+				buildplan := packit.BuildpackPlan{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name: "node",
+							Metadata: map[string]interface{}{
+								"version":        tt.requestedNodeVersion,
+								"version-source": "BP_NODE_VERSION",
 							},
 						},
 					},
-					Stack: "io.buildpacks.stacks.ubi8",
+				}
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					Plan:       buildplan,
+					Stack:      "io.buildpacks.stacks.ubi8",
 				})
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(tt.RunDockerfileProps, runDockerfileTemplate)
-				tt.BuildDockerfileProps.NODEJS_VERSION = uint64(tt.buildDockerfileExpectedNodejsVersion)
-				buildDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(tt.BuildDockerfileProps, buildDockerfileTemplate)
+				runDockerFileProps := ubinodejsextension.RunDockerfileProps{
+					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.expectedNodeVersion),
+				}
+				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(runDockerFileProps, runDockerfileTemplate)
+
+				buildDockerfileProps := ubinodejsextension.BuildDockerfileProps{
+					CNB_USER_ID:    1002,
+					CNB_GROUP_ID:   1000,
+					CNB_STACK_ID:   "io.buildpacks.stacks.ubi8",
+					PACKAGES:       ubinodejsextension.PACKAGES,
+					NODEJS_VERSION: uint64(tt.expectedNodeVersion),
+				}
+
+				buildDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(buildDockerfileProps, buildDockerfileTemplate)
 
 				buf := new(strings.Builder)
 				_, _ = io.Copy(buf, generateResult.RunDockerfile)
@@ -448,85 +375,84 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				buf.Reset()
 				_, _ = io.Copy(buf, generateResult.BuildDockerfile)
 				Expect(buf.String()).To(Equal(buildDockerfileContent))
-			}
 
+			}
 		})
 
 		it("should return the default when node version has NOT been requested", func() {
 
-			extensionToml, _ := readExtensionTomlTemplateFile("16")
+			imagesJsonContent := generateImagesJsonFile("16")
+			imagesJsonTmpDir = t.TempDir()
+			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
 
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				imagesJsonPath,
+			)
 
 			versionTests := []struct {
-				Name                                 string
-				Metadata                             map[string]interface{}
-				RunDockerfileProps                   ubinodejsextension.RunDockerfileProps
-				BuildDockerfileProps                 ubinodejsextension.BuildDockerfileProps
-				buildDockerfileExpectedNodejsVersion int
+				requestedNodeVersion string
+				versionSource        string
+				Metadata             map[string]interface{}
+				expectedNodeVersion  int
 			}{
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "",
-						"version-source": "",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "",
+					versionSource:        "",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-16-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 16,
+					requestedNodeVersion: "",
+					versionSource:        "BP_NODE_VERSION",
+					expectedNodeVersion:  16,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "x",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: "x",
+					versionSource:        "BP_NODE_VERSION",
+					expectedNodeVersion:  18,
 				},
 			}
 
 			for _, tt := range versionTests {
 
-				generateResult, err = generate(packit.GenerateContext{
-					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{
-								Name:     tt.Name,
-								Metadata: tt.Metadata,
+				buildplan := packit.BuildpackPlan{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name: "node",
+							Metadata: map[string]interface{}{
+								"version":        tt.requestedNodeVersion,
+								"version-source": tt.versionSource,
 							},
 						},
 					},
-					Stack: "io.buildpacks.stacks.ubi8",
+				}
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					Plan:       buildplan,
+					Stack:      "io.buildpacks.stacks.ubi8",
 				})
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(tt.RunDockerfileProps, runDockerfileTemplate)
-				tt.BuildDockerfileProps.NODEJS_VERSION = uint64(tt.buildDockerfileExpectedNodejsVersion)
-				buildDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(tt.BuildDockerfileProps, buildDockerfileTemplate)
+				runDockerFileProps := ubinodejsextension.RunDockerfileProps{
+					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.expectedNodeVersion),
+				}
+
+				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(runDockerFileProps, runDockerfileTemplate)
+				buildDockerfileProps := ubinodejsextension.BuildDockerfileProps{
+					CNB_USER_ID:    1002,
+					CNB_GROUP_ID:   1000,
+					CNB_STACK_ID:   "io.buildpacks.stacks.ubi8",
+					PACKAGES:       ubinodejsextension.PACKAGES,
+					NODEJS_VERSION: uint64(tt.expectedNodeVersion),
+				}
+
+				buildDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(buildDockerfileProps, buildDockerfileTemplate)
 
 				buf := new(strings.Builder)
 				_, _ = io.Copy(buf, generateResult.RunDockerfile)
@@ -540,67 +466,68 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 		it("should return the higher node version when it requests for >=nodeVersion", func() {
 
-			extensionToml, _ := readExtensionTomlTemplateFile()
+			imagesJsonContent := generateImagesJsonFile("18")
+			imagesJsonTmpDir = t.TempDir()
+			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
 
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				imagesJsonPath,
+			)
 
 			versionTests := []struct {
-				Name                                 string
-				Metadata                             map[string]interface{}
-				RunDockerfileProps                   ubinodejsextension.RunDockerfileProps
-				BuildDockerfileProps                 ubinodejsextension.BuildDockerfileProps
-				buildDockerfileExpectedNodejsVersion int
+				requestedNodeVersion string
+				expectedNodeVersion  int
 			}{
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        ">16",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: ">16",
+					expectedNodeVersion:  18,
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        ">13",
-						"version-source": "BP_NODE_VERSION",
-					},
-					RunDockerfileProps: ubinodejsextension.RunDockerfileProps{
-						Source: "paketocommunity/run-nodejs-18-ubi-base",
-					},
-					BuildDockerfileProps:                 BuildDockerfileProps,
-					buildDockerfileExpectedNodejsVersion: 18,
+					requestedNodeVersion: ">13",
+					expectedNodeVersion:  18,
 				},
 			}
 
 			for _, tt := range versionTests {
-
-				generateResult, err = generate(packit.GenerateContext{
-					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{
-								Name:     tt.Name,
-								Metadata: tt.Metadata,
+				buildplan := packit.BuildpackPlan{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name: "node",
+							Metadata: map[string]interface{}{
+								"version":        tt.requestedNodeVersion,
+								"version-source": "BP_NODE_VERSION",
 							},
 						},
 					},
-					Stack: "io.buildpacks.stacks.ubi8",
+				}
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					Plan:       buildplan,
+					Stack:      "io.buildpacks.stacks.ubi8",
 				})
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(generateResult).NotTo(Equal(nil))
 
-				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(tt.RunDockerfileProps, runDockerfileTemplate)
-				tt.BuildDockerfileProps.NODEJS_VERSION = uint64(tt.buildDockerfileExpectedNodejsVersion)
-				buildDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(tt.BuildDockerfileProps, buildDockerfileTemplate)
+				runDockerFileProps := ubinodejsextension.RunDockerfileProps{
+					Source: fmt.Sprintf("paketocommunity/run-nodejs-%d-ubi-base", tt.expectedNodeVersion),
+				}
+				runDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(runDockerFileProps, runDockerfileTemplate)
+
+				buildDockerfileProps := ubinodejsextension.BuildDockerfileProps{
+					CNB_USER_ID:    1002,
+					CNB_GROUP_ID:   1000,
+					CNB_STACK_ID:   "io.buildpacks.stacks.ubi8",
+					PACKAGES:       ubinodejsextension.PACKAGES,
+					NODEJS_VERSION: uint64(tt.expectedNodeVersion),
+				}
+
+				buildDockerfileContent, _ := ubinodejsextension.FillPropsToTemplate(buildDockerfileProps, buildDockerfileTemplate)
 
 				buf := new(strings.Builder)
 				_, _ = io.Copy(buf, generateResult.RunDockerfile)
@@ -609,86 +536,66 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 				_, _ = io.Copy(buf, generateResult.BuildDockerfile)
 				Expect(buf.String()).To(Equal(buildDockerfileContent))
 			}
-
 		})
 
 		it("Should error on below cases of requested node", func() {
 
-			extensionToml, _ := readExtensionTomlTemplateFile()
+			imagesJsonContent := generateImagesJsonFile("18")
+			imagesJsonTmpDir = t.TempDir()
+			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
 
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				imagesJsonPath,
+			)
 
 			versionTests := []struct {
-				Name     string
-				Metadata map[string]interface{}
+				requestedNodeVersion string
 			}{
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "17 - 18.0.0",
-						"version-source": "BP_NODE_VERSION",
-					},
+					requestedNodeVersion: "17 - 18.0.0",
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "15",
-						"version-source": "BP_NODE_VERSION",
-					},
+					requestedNodeVersion: "15",
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "18.0.0",
-						"version-source": "BP_NODE_VERSION",
-					},
+					requestedNodeVersion: "18.0.0",
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "v18.999.0",
-						"version-source": "BP_NODE_VERSION",
-					},
+					requestedNodeVersion: "v18.999.0",
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        ">18",
-						"version-source": "BP_NODE_VERSION",
-					},
+					requestedNodeVersion: ">18",
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "~16.2",
-						"version-source": "BP_NODE_VERSION",
-					},
+					requestedNodeVersion: "~16.2",
 				},
 				{
-					Name: "node",
-					Metadata: map[string]interface{}{
-						"version":        "16.5.x",
-						"version-source": "BP_NODE_VERSION",
-					},
+					requestedNodeVersion: "16.5.x",
 				},
 			}
 
 			for _, tt := range versionTests {
 
-				generateResult, err = generate(packit.GenerateContext{
-					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: []packit.BuildpackPlanEntry{
-							{
-								Name:     tt.Name,
-								Metadata: tt.Metadata,
+				buildplan := packit.BuildpackPlan{
+					Entries: []packit.BuildpackPlanEntry{
+						{
+							Name: "node",
+							Metadata: map[string]interface{}{
+								"version":        tt.requestedNodeVersion,
+								"version-source": "BP_NODE_VERSION",
 							},
 						},
 					},
-					Stack: "io.buildpacks.stacks.ubi8",
+				}
+
+				generateResult, err = generate(packit.GenerateContext{
+					WorkingDir: workingDir,
+					Plan:       buildplan,
+					Stack:      "io.buildpacks.stacks.ubi8",
 				})
 
 				Expect(err).To(HaveOccurred())
@@ -702,9 +609,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		it.Before(func() {
 
 			workingDir = t.TempDir()
-			cnbDir, err = os.MkdirTemp("", "cnb")
-
-			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -720,15 +624,22 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 		it.After(func() {
 			Expect(os.RemoveAll(workingDir)).To(Succeed())
+			Expect(os.RemoveAll(imagesJsonTmpDir)).To(Succeed())
 		})
 
 		it("Should respect the priorities and return the proper Node.js version", func() {
 
-			extensionToml, _ := readExtensionTomlTemplateFile()
+			imagesJsonContent := generateImagesJsonFile("18")
+			imagesJsonTmpDir = t.TempDir()
+			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
 
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				imagesJsonPath,
+			)
 
 			entriesTests := []struct {
 				Entries            []packit.BuildpackPlanEntry
@@ -793,7 +704,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
 						Entries: tt.Entries,
 					},
@@ -812,48 +722,12 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 		})
 
-		it("Should error in case there are no entries in the buildpack plan.", func() {
-
-			extensionToml, _ := readExtensionTomlTemplateFile()
-
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
-
-			entriesTests := []struct {
-				Entries []packit.BuildpackPlanEntry
-			}{
-				{
-					Entries: []packit.BuildpackPlanEntry{},
-				},
-			}
-
-			for _, tt := range entriesTests {
-
-				generateResult, err = generate(packit.GenerateContext{
-					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
-					Plan: packit.BuildpackPlan{
-						Entries: tt.Entries,
-					},
-					Stack: "io.buildpacks.stacks.ubi8",
-				})
-
-				Expect(err).To(HaveOccurred())
-
-			}
-
-		})
 	}, spec.Sequential())
 
 	context("When BP_UBI_RUN_IMAGE_OVERRIDE env has been set", func() {
 
 		it.Before(func() {
-
 			workingDir = t.TempDir()
-			cnbDir, err = os.MkdirTemp("", "cnb")
-
-			generate = ubinodejsextension.Generate(dependencyManager, logger, ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000})
 
 			err = toml.NewEncoder(buf).Encode(testBuildPlan)
 			Expect(err).NotTo(HaveOccurred())
@@ -873,11 +747,17 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 		it("Should have the same value as the BP_UBI_RUN_IMAGE_OVERRIDE if is not empty string", func() {
 
-			extensionToml, _ := readExtensionTomlTemplateFile()
+			imagesJsonContent := generateImagesJsonFile("18")
+			imagesJsonTmpDir = t.TempDir()
+			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
 
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				imagesJsonPath,
+			)
 
 			entriesTests := []struct {
 				Entries                   []packit.BuildpackPlanEntry
@@ -899,7 +779,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
 						Entries: tt.Entries,
 					},
@@ -923,11 +802,17 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 		it("Should fallback to the run image which corresponds to the selected node version during build", func() {
 
-			extensionToml, _ := readExtensionTomlTemplateFile()
+			imagesJsonContent := generateImagesJsonFile("18")
+			imagesJsonTmpDir = t.TempDir()
+			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
 
-			cnbDir, err = os.MkdirTemp("", "cnb")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.WriteFile(cnbDir+"/extension.toml", []byte(extensionToml), 0600)).To(Succeed())
+			generate = ubinodejsextension.Generate(
+				dependencyManager,
+				logger,
+				ubinodejsextension.DuringBuildPermissions{CNB_USER_ID: 1002, CNB_GROUP_ID: 1000},
+				imagesJsonPath,
+			)
 
 			entriesTests := []struct {
 				Entries                   []packit.BuildpackPlanEntry
@@ -951,7 +836,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 				generateResult, err = generate(packit.GenerateContext{
 					WorkingDir: workingDir,
-					CNBPath:    cnbDir,
 					Plan: packit.BuildpackPlan{
 						Entries: tt.Entries,
 					},
@@ -976,40 +860,98 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 
 }
 
-func readExtensionTomlTemplateFile(defaultNodeVersion ...string) (string, error) {
-	var version string
-	if len(defaultNodeVersion) == 0 {
-		version = "18.*.*"
-	} else {
-		version = defaultNodeVersion[0]
+func generateImagesJsonFile(defaultNodeVersion string) string {
+
+	var isDefaultNodeRunImage16 bool
+	var isDefaultNodeRunImage18 bool
+
+	if defaultNodeVersion == "16" {
+		isDefaultNodeRunImage16 = true
+		isDefaultNodeRunImage18 = false
+	} else if defaultNodeVersion == "18" {
+		isDefaultNodeRunImage16 = false
+		isDefaultNodeRunImage18 = true
 	}
-
-	template := `
-api = "0.7"
-
-[extension]
-id = "redhat-runtimes/nodejs"
-name = "RedHat Runtimes Node.js Dependency Extension"
-version = "0.0.1"
-description = "This extension installs the appropriate nodejs runtime via dnf"
-
-[metadata]
-  [metadata.default-versions]
-	node = "%s"
-
-  [[metadata.dependencies]]
-	id = "node"
-	name = "Ubi Node Extension"
-	stacks = ["io.buildpacks.stacks.ubi8"]
-	source = "paketocommunity/run-nodejs-18-ubi-base"
-	version = "18.1000"
-
-  [[metadata.dependencies]]
-	id = "node"
-	name = "Ubi Node Extension"
-	stacks = ["io.buildpacks.stacks.ubi8"]
-	source = "paketocommunity/run-nodejs-16-ubi-base"
-	version = "16.1000"
-	`
-	return fmt.Sprintf(template, version), nil
+	return fmt.Sprintf(`{
+    "support_usns": false,
+    "update_on_new_image": true,
+    "receipts_show_limit": 16,
+    "images": [
+      {
+        "name": "default",
+        "config_dir": "stack",
+        "output_dir": "build",
+        "build_image": "build",
+        "run_image": "run",
+        "build_receipt_filename": "build-receipt.cyclonedx.json",
+        "run_receipt_filename": "run-receipt.cyclonedx.json",
+        "create_build_image": true,
+        "base_build_container_image": "docker://registry.access.redhat.com/ubi8/ubi-minimal",
+        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/ubi-minimal"
+      },
+      {
+        "name": "java-8",
+        "config_dir": "stack-java-8",
+        "output_dir": "build-java-8",
+        "build_image": "build-java-8",
+        "run_image": "run-java-8",
+        "build_receipt_filename": "build-java-8-receipt.cyclonedx.json",
+        "run_receipt_filename": "run-java-8-receipt.cyclonedx.json",
+        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/openjdk-8-runtime"
+      },
+      {
+        "name": "java-11",
+        "config_dir": "stack-java-11",
+        "output_dir": "build-java-11",
+        "build_image": "build-java-11",
+        "run_image": "run-java-11",
+        "build_receipt_filename": "build-java-11-receipt.cyclonedx.json",
+        "run_receipt_filename": "run-java-11-receipt.cyclonedx.json",
+        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/openjdk-11-runtime"
+      },
+      {
+        "name": "java-17",
+        "config_dir": "stack-java-17",
+        "output_dir": "build-java-17",
+        "build_image": "build-java-17",
+        "run_image": "run-java-17",
+        "build_receipt_filename": "build-java-17-receipt.cyclonedx.json",
+        "run_receipt_filename": "run-java-17-receipt.cyclonedx.json",
+        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/openjdk-17-runtime"
+      },
+      {
+        "name": "java-21",
+        "config_dir": "stack-java-21",
+        "output_dir": "build-java-21",
+        "build_image": "build-java-21",
+        "run_image": "run-java-21",
+        "build_receipt_filename": "build-java-21-receipt.cyclonedx.json",
+        "run_receipt_filename": "run-java-21-receipt.cyclonedx.json",
+        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/openjdk-21-runtime"
+      },
+      {
+        "name": "nodejs-16",
+        "is_default_run_image": %t,
+        "config_dir": "stack-nodejs-16",
+        "output_dir": "build-nodejs-16",
+        "build_image": "build-nodejs-16",
+        "run_image": "run-nodejs-16",
+        "build_receipt_filename": "build-nodejs-16-receipt.cyclonedx.json",
+        "run_receipt_filename": "run-nodejs-16-receipt.cyclonedx.json",
+        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/nodejs-16-minimal"
+      },
+      {
+        "name": "nodejs-18",
+        "is_default_run_image": %t,
+        "config_dir": "stack-nodejs-18",
+        "output_dir": "build-nodejs-18",
+        "build_image": "build-nodejs-18",
+        "run_image": "run-nodejs-18",
+        "build_receipt_filename": "build-nodejs-18-receipt.cyclonedx.json",
+        "run_receipt_filename": "run-nodejs-18-receipt.cyclonedx.json",
+        "base_run_container_image": "docker://registry.access.redhat.com/ubi8/nodejs-18-minimal"
+      }
+    ]
+  }
+`, isDefaultNodeRunImage16, isDefaultNodeRunImage18)
 }
