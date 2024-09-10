@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 	"time"
 
@@ -40,16 +39,6 @@ var settings struct {
 	}
 
 	Metadata struct {
-		DefaultVersions struct {
-			Node string `toml:"node"`
-		} `toml:"default-versions"`
-		Dependencies []struct {
-			ID      string   `toml:"id"`
-			Name    string   `toml:"name"`
-			Stacks  []string `toml:"stacks"`
-			Source  string   `toml:"source"`
-			Version string   `toml:"version"`
-		} `toml:"dependencies"`
 	} `toml:"metadata"`
 
 	Config struct {
@@ -68,11 +57,6 @@ func TestIntegration(t *testing.T) {
 	_, err = toml.NewDecoder(file).Decode(&settings)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(file.Close()).To(Succeed())
-
-	// order by descending version
-	sort.Slice(settings.Metadata.Dependencies, func(i, j int) bool {
-		return settings.Metadata.Dependencies[i].Version > settings.Metadata.Dependencies[j].Version
-	})
 
 	//reading the integration.json file
 	file, err = os.Open("../integration.json")
