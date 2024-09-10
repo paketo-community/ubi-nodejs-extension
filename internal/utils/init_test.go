@@ -13,5 +13,8 @@ func TestUnitUtils(t *testing.T) {
 	suite("CreateConfigTomlFileContent", testCreateConfigTomlFileContent)
 	suite("ParseImagesJsonFile", testParseImagesJsonFile)
 	suite("GetNodejsStackImages", testGetNodejsStackImages)
+	suite("GetDuringBuildPermissions", testGetDuringBuildPermissions)
+	suite("testGenerateBuildDockerfile", testGenerateBuildDockerfile)
+	suite("testGenerateRunDockerfile", testGenerateRunDockerfile)
 	suite.Run(t)
 }

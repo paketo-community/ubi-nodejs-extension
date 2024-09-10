@@ -1,11 +1,8 @@
 package ubinodejsextension
 
 import (
-	"bytes"
-	_ "embed"
 	"os"
 	"strings"
-	"text/template"
 
 	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
 	"github.com/paketo-community/ubi-nodejs-extension/structs"
@@ -22,12 +19,6 @@ const PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm no
 const DEFAULT_USER_ID = 1002
 const DEFAULT_GROUP_ID = 1000
 const CONFIG_TOML_PATH = "/tmp/config.toml"
-
-//go:embed templates/build.Dockerfile
-var buildDockerfileTemplate string
-
-//go:embed templates/run.Dockerfile
-var runDockerfileTemplate string
 
 //go:generate faux --interface DependencyManager --output fakes/dependency_manager.go
 type DependencyManager interface {
@@ -103,22 +94,22 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 		logger.Process("Selected Node Engine Major version %d", selectedNodeMajorVersion)
 
 		// Generating build.Dockerfile
-		buildDockerfileContent, err := FillPropsToTemplate(structs.BuildDockerfileProps{
+		buildDockerfileContent, err := utils.GenerateBuildDockerfile(structs.BuildDockerfileProps{
 			NODEJS_VERSION: selectedNodeMajorVersion,
 			CNB_USER_ID:    duringBuildPermissions.CNB_USER_ID,
 			CNB_GROUP_ID:   duringBuildPermissions.CNB_GROUP_ID,
 			CNB_STACK_ID:   context.Stack,
 			PACKAGES:       PACKAGES,
-		}, buildDockerfileTemplate)
+		})
 
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
 
 		// Generating run.Dockerfile
-		runDockerfileContent, err := FillPropsToTemplate(structs.RunDockerfileProps{
+		runDockerfileContent, err := utils.GenerateRunDockerfile(structs.RunDockerfileProps{
 			Source: selectedNodeRunImage,
-		}, runDockerfileTemplate)
+		})
 
 		if err != nil {
 			return packit.GenerateResult{}, err
@@ -130,20 +121,4 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			RunDockerfile:   strings.NewReader(runDockerfileContent),
 		}, nil
 	}
-}
-
-func FillPropsToTemplate(properties interface{}, templateString string) (result string, Error error) {
-
-	templ, err := template.New("template").Parse(templateString)
-	if err != nil {
-		return "", err
-	}
-
-	var buf bytes.Buffer
-	err = templ.Execute(&buf, properties)
-	if err != nil {
-		panic(err)
-	}
-
-	return buf.String(), nil
 }

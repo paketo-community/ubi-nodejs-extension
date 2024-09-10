@@ -11,7 +11,5 @@ func TestUnitUbiNodejsExtension(t *testing.T) {
 	suite := spec.New("ubi-nodejs-extension", spec.Report(report.Terminal{}))
 	suite("Detect", testDetect)
 	suite("Generate", testGenerate)
-	suite("Dockerfile Creation", testFillPropsToTemplate)
-	suite("Fetching during build permissions", testFetchingPermissionsFromEtcPasswdFile)
 	suite.Run(t)
 }

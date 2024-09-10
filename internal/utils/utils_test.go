@@ -2,13 +2,15 @@ package utils_test
 
 import (
 	_ "embed"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
 	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
-	utils_testdata "github.com/paketo-community/ubi-nodejs-extension/internal/utils/testdata"
+	"github.com/paketo-community/ubi-nodejs-extension/structs"
 	"github.com/sclevine/spec"
 )
 
@@ -146,17 +148,43 @@ func testParseImagesJsonFile(t *testing.T, _ spec.G, it spec.S) {
 	})
 
 	it("successfully parses images.json file", func() {
-		cwd, err := os.Getwd()
-		if err != nil {
-			Expect(err).ToNot(HaveOccurred())
-		}
 
-		imagesJsonData, err := utils.ParseImagesJsonFile(filepath.Join(cwd, "/testdata/images_sample.json"))
+		imagesJsonContent := utils.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, false)
+		imagesJsonTmpDir := t.TempDir()
+		imagesJsonPath := filepath.Join(imagesJsonTmpDir, "images.json")
+		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+
+		imagesJsonData, err := utils.ParseImagesJsonFile(imagesJsonPath)
 		Expect(err).ToNot(HaveOccurred())
 
-		imagesParsed := utils_testdata.GetParsedImages("images_sample.json")
-
-		Expect(imagesJsonData).To(Equal(imagesParsed))
+		Expect(imagesJsonData).To(Equal(utils.ImagesJson{
+			StackImages: []utils.StackImages{
+				{
+					Name:              "default",
+					IsDefaultRunImage: false,
+				},
+				{
+					Name:              "java-17",
+					IsDefaultRunImage: false,
+				},
+				{
+					Name:              "java-21",
+					IsDefaultRunImage: false,
+				},
+				{
+					Name:              "nodejs-16",
+					IsDefaultRunImage: false,
+				},
+				{
+					Name:              "nodejs-18",
+					IsDefaultRunImage: false,
+				},
+				{
+					Name:              "nodejs-20",
+					IsDefaultRunImage: true,
+				},
+			},
+		}))
 	})
 
 	it("erros when images.json file does not exist", func() {
@@ -166,13 +194,15 @@ func testParseImagesJsonFile(t *testing.T, _ spec.G, it spec.S) {
 		Expect(imagesJsonData).To(Equal(utils.ImagesJson{}))
 	})
 
-	it("erros when images.json file is corrupted", func() {
-		cwd, err := os.Getwd()
-		if err != nil {
-			Expect(err).ToNot(HaveOccurred())
-		}
+	it("erros when images.json file is not a valid json", func() {
 
-		imagesJsonData, err := utils.ParseImagesJsonFile(filepath.Join(cwd, "/testdata/images_corrupted.json"))
+		imagesJsonContent := utils.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, true)
+		imagesJsonTmpDir := t.TempDir()
+		imagesJsonPath := filepath.Join(imagesJsonTmpDir, "images_not_valid.json")
+		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+
+		imagesJsonData, err := utils.ParseImagesJsonFile(imagesJsonPath)
+
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("invalid character"))
 		Expect(imagesJsonData).To(Equal(utils.ImagesJson{}))
@@ -188,8 +218,34 @@ func testGetNodejsStackImages(t *testing.T, context spec.G, it spec.S) {
 	context("When passing the array with all the stacks", func() {
 
 		it("should return only the nodejs stacks", func() {
-			allStacks := utils_testdata.GetParsedImages("images_sample.json")
-			nodejsStacks, err := utils.GetNodejsStackImages(allStacks)
+			nodejsStacks, err := utils.GetNodejsStackImages(utils.ImagesJson{
+				StackImages: []utils.StackImages{
+					{
+						Name:              "default",
+						IsDefaultRunImage: false,
+					},
+					{
+						Name:              "java-17",
+						IsDefaultRunImage: false,
+					},
+					{
+						Name:              "java-21",
+						IsDefaultRunImage: false,
+					},
+					{
+						Name:              "nodejs-16",
+						IsDefaultRunImage: false,
+					},
+					{
+						Name:              "nodejs-18",
+						IsDefaultRunImage: false,
+					},
+					{
+						Name:              "nodejs-20",
+						IsDefaultRunImage: true,
+					},
+				},
+			})
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(nodejsStacks).To(Equal([]utils.StackImages{
@@ -215,10 +271,15 @@ func testGetNodejsStackImages(t *testing.T, context spec.G, it spec.S) {
 	context("When node version is malformed or does not exist", func() {
 
 		it("should error with a message", func() {
-			cwd, err := os.Getwd()
-			if err != nil {
-				Expect(err).ToNot(HaveOccurred())
-			}
+
+			imagesJsonTmpDir := t.TempDir()
+			imagesJsonNodeVersionNotIntegerContent := utils.GenerateImagesJsonFile([]string{"16", "18", "hello"}, []bool{false, false, true}, false)
+			imagesJsonNodeVersionNotIntegerPath := filepath.Join(imagesJsonTmpDir, "images_node_version_not_integer.json")
+			Expect(os.WriteFile(imagesJsonNodeVersionNotIntegerPath, []byte(imagesJsonNodeVersionNotIntegerContent), 0600)).To(Succeed())
+
+			imagesJsonNoNodeVersionContent := utils.GenerateImagesJsonFile([]string{"16", "", "20"}, []bool{false, false, true}, false)
+			imagesJsonNoNodeVersionPath := filepath.Join(imagesJsonTmpDir, "images_no_node_version.json")
+			Expect(os.WriteFile(imagesJsonNoNodeVersionPath, []byte(imagesJsonNoNodeVersionContent), 0600)).To(Succeed())
 
 			for _, tt := range []struct {
 				errorMessage   string
@@ -226,14 +287,14 @@ func testGetNodejsStackImages(t *testing.T, context spec.G, it spec.S) {
 			}{
 				{
 					errorMessage:   "extracted Node.js version [hello] for stack nodejs-hello is not an integer",
-					imagesJsonPath: "/testdata/images_node_version_not_integer.json",
+					imagesJsonPath: imagesJsonNodeVersionNotIntegerPath,
 				},
 				{
 					errorMessage:   "extracted Node.js version [] for stack nodejs- is not an integer",
-					imagesJsonPath: "/testdata/images_no_node_version.json",
+					imagesJsonPath: imagesJsonNoNodeVersionPath,
 				},
 			} {
-				imagesJsonData, err := utils.ParseImagesJsonFile(filepath.Join(cwd, tt.imagesJsonPath))
+				imagesJsonData, err := utils.ParseImagesJsonFile(filepath.Join(tt.imagesJsonPath))
 				Expect(err).ToNot(HaveOccurred())
 
 				nodejsStacks, err := utils.GetNodejsStackImages(imagesJsonData)
@@ -241,6 +302,163 @@ func testGetNodejsStackImages(t *testing.T, context spec.G, it spec.S) {
 				Expect(err.Error()).To(ContainSubstring(tt.errorMessage))
 				Expect(nodejsStacks).To(Equal([]utils.StackImages{}))
 			}
+		})
+	})
+}
+
+func testGenerateBuildDockerfile(t *testing.T, context spec.G, it spec.S) {
+
+	var (
+		Expect = NewWithT(t).Expect
+	)
+
+	context("Adding props on build.dockerfile template", func() {
+
+		it("Should fill with properties the template/build.Dockerfile", func() {
+
+			output, err := utils.GenerateBuildDockerfile(structs.BuildDockerfileProps{
+				NODEJS_VERSION: 16,
+				CNB_USER_ID:    1000,
+				CNB_GROUP_ID:   1000,
+				CNB_STACK_ID:   "io.buildpacks.stacks.ubi8",
+				PACKAGES:       ubinodejsextension.PACKAGES,
+			})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(output).To(Equal(fmt.Sprintf(`ARG base_image
+FROM ${base_image}
+
+USER root
+
+ARG build_id=0
+RUN echo ${build_id}
+
+RUN microdnf -y module enable nodejs:16
+RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y %s && microdnf clean all
+
+RUN echo uid:gid "1000:1000"
+USER 1000:1000
+
+RUN echo "CNB_STACK_ID: io.buildpacks.stacks.ubi8"`, ubinodejsextension.PACKAGES)))
+
+		})
+
+	})
+}
+
+func testGenerateRunDockerfile(t *testing.T, context spec.G, it spec.S) {
+
+	var (
+		Expect = NewWithT(t).Expect
+	)
+
+	context("Adding props on build.dockerfile template", func() {
+
+		it("Should fill with properties the template/run.Dockerfile", func() {
+
+			RunDockerfileProps := structs.RunDockerfileProps{
+				Source: "paketocommunity/run-nodejs-18-ubi-base",
+			}
+
+			output, err := utils.GenerateRunDockerfile(RunDockerfileProps)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(output).To(Equal(`FROM paketocommunity/run-nodejs-18-ubi-base`))
+
+		})
+	})
+}
+
+func testGetDuringBuildPermissions(t *testing.T, context spec.G, it spec.S) {
+
+	var (
+		Expect = NewWithT(t).Expect
+		tmpDir string
+		path   string
+		err    error
+	)
+
+	context("/etc/passwd exists and has the cnb user", func() {
+
+		it("It should return the permissions specified for the cnb user", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			path = filepath.Join(tmpDir, "/passwd")
+
+			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+cnb:x:1234:2345::/home/cnb:/bin/bash
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+`), 0600)).To(Succeed())
+
+			duringBuilderPermissions := utils.GetDuringBuildPermissions(path)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				structs.DuringBuildPermissions{
+					CNB_USER_ID:  1234,
+					CNB_GROUP_ID: 2345,
+				},
+			))
+		})
+	})
+
+	context("/etc/passwd exists and does NOT have the cnb user", func() {
+
+		it("It should return the default permissions", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			path = filepath.Join(tmpDir, "/passwd")
+
+			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+`), 0600)).To(Succeed())
+
+			duringBuildPermissions := utils.GetDuringBuildPermissions(path)
+
+			Expect(duringBuildPermissions).To(Equal(
+				structs.DuringBuildPermissions{
+					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
+					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+			))
+		})
+	})
+
+	context("/etc/passwd does NOT exist", func() {
+
+		it("It should return the default permissions", func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+
+			duringBuilderPermissions := utils.GetDuringBuildPermissions(tmpDir)
+
+			Expect(duringBuilderPermissions).To(Equal(
+				structs.DuringBuildPermissions{
+					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
+					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+			))
 		})
 	})
 }
