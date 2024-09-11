@@ -18,6 +18,9 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+var DEFAULT_USER_ID = 1002
+var DEFAULT_GROUP_ID = 1000
+
 //go:embed templates/build.Dockerfile
 var buildDockerfileTemplate string
 
@@ -103,6 +106,10 @@ func GetNodejsStackImages(imagesJsonData ImagesJson) ([]StackImages, error) {
 			nodejsStacks = append(nodejsStacks, stack)
 		}
 	}
+	if len(nodejsStacks) == 0 {
+		return []StackImages{}, errors.New("no nodejs stacks found")
+	}
+
 	return nodejsStacks, nil
 }
 
@@ -126,8 +133,8 @@ func ParseImagesJsonFile(imagesJsonPath string) (ImagesJson, error) {
 func GetDuringBuildPermissions(filepath string) structs.DuringBuildPermissions {
 
 	defaultPermissions := structs.DuringBuildPermissions{
-		CNB_USER_ID:  1002,
-		CNB_GROUP_ID: 1000,
+		CNB_USER_ID:  DEFAULT_USER_ID,
+		CNB_GROUP_ID: DEFAULT_GROUP_ID,
 	}
 	re := regexp.MustCompile(`cnb:x:(\d+):(\d+)::`)
 

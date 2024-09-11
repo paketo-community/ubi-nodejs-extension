@@ -110,8 +110,6 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 		it("Specific version of node requested", func() {
 
 			imagesJsonContent := utils.GenerateImagesJsonFile([]string{"16", "18"}, []bool{false, true}, false)
-			hello := fmt.Sprintf(imagesJsonContent)
-			fmt.Println(hello)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
 			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())

@@ -43,7 +43,7 @@ func testGetDefaultNodeVersion(t *testing.T, context spec.G, it spec.S) {
 		})
 
 		context("and there are no default run images", func() {
-			it("should error", func() {
+			it("should error with a message", func() {
 				defaultNodeVersion, err := utils.GetDefaultNodeVersion([]utils.StackImages{
 					{
 						Name:              "nodejs-22",
@@ -265,6 +265,31 @@ func testGetNodejsStackImages(t *testing.T, context spec.G, it spec.S) {
 					NodeVersion:       "20",
 				},
 			}))
+		})
+	})
+
+	context("When passing a stack images array without any nodejs stacks in it", func() {
+
+		it("should return an error with an appropriate message", func() {
+			nodejsStacks, err := utils.GetNodejsStackImages(utils.ImagesJson{
+				StackImages: []utils.StackImages{
+					{
+						Name:              "default",
+						IsDefaultRunImage: false,
+					},
+					{
+						Name:              "java-17",
+						IsDefaultRunImage: false,
+					},
+					{
+						Name:              "java-21",
+						IsDefaultRunImage: false,
+					},
+				},
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("no nodejs stacks found"))
+			Expect(nodejsStacks).To(Equal([]utils.StackImages{}))
 		})
 	})
 
