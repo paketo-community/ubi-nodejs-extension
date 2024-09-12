@@ -15,6 +15,68 @@ import (
 	"github.com/sclevine/spec"
 )
 
+func testGenerateConfigTomlContentFromImagesJson(t *testing.T, context spec.G, it spec.S) {
+
+	var (
+		Expect = NewWithT(t).Expect
+	)
+
+	var imagesJsonDir string
+	it.Before(func() {
+		imagesJsonDir = t.TempDir()
+	})
+
+	it.After(func() {
+		Expect(os.RemoveAll(imagesJsonDir)).To(Succeed())
+	})
+	context("When GenerateConfigTomlContentFromImagesJson is being called with a valid images.json file ", func() {
+
+		it("successfully parses images.json file and returns the config.toml content", func() {
+
+			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, false)
+			imagesJsonTmpDir := t.TempDir()
+			imagesJsonPath := filepath.Join(imagesJsonTmpDir, "images.json")
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
+
+			configTomlContent, err := utils.GenerateConfigTomlContentFromImagesJson(imagesJsonPath, "io.buildpacks.stacks.ubix")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(configTomlContent)).To(ContainSubstring(`[metadata]
+  [metadata.default-versions]
+    node = "20.*.*"
+
+  [[metadata.dependencies]]
+    id = "node"
+    source = "paketocommunity/run-nodejs-16-ubi-base"
+    stacks = ["io.buildpacks.stacks.ubix"]
+    version = "16.1000"
+
+  [[metadata.dependencies]]
+    id = "node"
+    source = "paketocommunity/run-nodejs-18-ubi-base"
+    stacks = ["io.buildpacks.stacks.ubix"]
+    version = "18.1000"
+
+  [[metadata.dependencies]]
+    id = "node"
+    source = "paketocommunity/run-nodejs-20-ubi-base"
+    stacks = ["io.buildpacks.stacks.ubix"]
+    version = "20.1000"`))
+		})
+	})
+
+	context("When GenerateConfigTomlContentFromImagesJson is being called with an invalide images.json file ", func() {
+
+		it("It should throw an error with a message", func() {
+
+			_, err := utils.GenerateConfigTomlContentFromImagesJson("/path/to/invalid/images.json", "io.buildpacks.stacks.ubix")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no such file or directory"))
+		})
+	})
+
+}
 func testGetDefaultNodeVersion(t *testing.T, context spec.G, it spec.S) {
 
 	var (
@@ -110,6 +172,7 @@ func testCreateConfigTomlFileContent(t *testing.T, context spec.G, it spec.S) {
 				{
 					Name:              "nodejs-20",
 					IsDefaultRunImage: false,
+					NodeVersion:       "20",
 				},
 			}, "io.buildpacks.stacks.ubix")
 
@@ -126,9 +189,9 @@ func testCreateConfigTomlFileContent(t *testing.T, context spec.G, it spec.S) {
 
   [[metadata.dependencies]]
     id = "node"
-    source = "paketocommunity/run-nodejs--ubi-base"
+    source = "paketocommunity/run-nodejs-20-ubi-base"
     stacks = ["io.buildpacks.stacks.ubix"]
-    version = ".1000"`))
+    version = "20.1000"`))
 		})
 	})
 }
@@ -153,7 +216,7 @@ func testParseImagesJsonFile(t *testing.T, _ spec.G, it spec.S) {
 		imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, false)
 		imagesJsonTmpDir := t.TempDir()
 		imagesJsonPath := filepath.Join(imagesJsonTmpDir, "images.json")
-		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 		imagesJsonData, err := utils.ParseImagesJsonFile(imagesJsonPath)
 		Expect(err).ToNot(HaveOccurred())
@@ -200,7 +263,7 @@ func testParseImagesJsonFile(t *testing.T, _ spec.G, it spec.S) {
 		imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, true)
 		imagesJsonTmpDir := t.TempDir()
 		imagesJsonPath := filepath.Join(imagesJsonTmpDir, "images_not_valid.json")
-		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 		imagesJsonData, err := utils.ParseImagesJsonFile(imagesJsonPath)
 

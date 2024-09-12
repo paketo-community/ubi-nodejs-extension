@@ -37,6 +37,31 @@ type ImagesJson struct {
 	StackImages []StackImages `json:"images"`
 }
 
+func GenerateConfigTomlContentFromImagesJson(imagesJsonPath string, stackId string) ([]byte, error) {
+	imagesJsonData, err := ParseImagesJsonFile(imagesJsonPath)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	nodejsStacks, err := GetNodejsStackImages(imagesJsonData)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	defaultNodeVersion, err := GetDefaultNodeVersion(nodejsStacks)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	configTomlContent, err := CreateConfigTomlFileContent(defaultNodeVersion, nodejsStacks, stackId)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	configTomlContentString := configTomlContent.Bytes()
+	return configTomlContentString, nil
+}
+
 func GetDefaultNodeVersion(stacks []StackImages) (string, error) {
 	var defaultNodeVersionsFound []string
 	for _, stack := range stacks {

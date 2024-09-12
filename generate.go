@@ -42,29 +42,13 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Candidates(allNodeVersionsInPriorityOrder)
 
-		imagesJsonData, err := utils.ParseImagesJsonFile(imagesJsonPath)
-		if err != nil {
-			return packit.GenerateResult{}, packit.Fail.WithMessage("Failed to parse images.json file: %s", err)
-		}
-
-		nodejsStacks, err := utils.GetNodejsStackImages(imagesJsonData)
-		if err != nil {
-			return packit.GenerateResult{}, err
-		}
-
-		defaultNodeVersion, err := utils.GetDefaultNodeVersion(nodejsStacks)
-
-		if err != nil {
-			return packit.GenerateResult{}, err
-		}
-
-		configTomlFileContent, err := utils.CreateConfigTomlFileContent(defaultNodeVersion, nodejsStacks, context.Stack)
+		configTomlFileContent, err := utils.GenerateConfigTomlContentFromImagesJson(imagesJsonPath, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
 
 		//save config.toml file
-		err = os.WriteFile(CONFIG_TOML_PATH, configTomlFileContent.Bytes(), 0644)
+		err = os.WriteFile(CONFIG_TOML_PATH, configTomlFileContent, 0644)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}

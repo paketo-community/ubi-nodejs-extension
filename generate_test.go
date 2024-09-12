@@ -113,7 +113,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18"}, []bool{false, true}, false)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
-			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
@@ -225,7 +225,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18"}, []bool{true, false}, false)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
-			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
@@ -310,7 +310,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18"}, []bool{false, true}, false)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
-			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
@@ -384,7 +384,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18"}, []bool{false, true}, false)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
-			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
@@ -473,7 +473,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18"}, []bool{false, true}, false)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
-			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
@@ -591,7 +591,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18"}, []bool{false, true}, false)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
-			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
@@ -646,7 +646,7 @@ func testGenerate(t *testing.T, context spec.G, it spec.S) {
 			imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18"}, []bool{false, true}, false)
 			imagesJsonTmpDir = t.TempDir()
 			imagesJsonPath = filepath.Join(imagesJsonTmpDir, "images.json")
-			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
+			Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0644)).To(Succeed())
 
 			generate = ubinodejsextension.Generate(
 				dependencyManager,
