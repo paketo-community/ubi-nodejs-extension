@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
+	testhelpers "github.com/paketo-community/ubi-nodejs-extension/internal/testhelpers"
 	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
 	"github.com/paketo-community/ubi-nodejs-extension/structs"
 	"github.com/sclevine/spec"
@@ -149,7 +150,7 @@ func testParseImagesJsonFile(t *testing.T, _ spec.G, it spec.S) {
 
 	it("successfully parses images.json file", func() {
 
-		imagesJsonContent := utils.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, false)
+		imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, false)
 		imagesJsonTmpDir := t.TempDir()
 		imagesJsonPath := filepath.Join(imagesJsonTmpDir, "images.json")
 		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
@@ -196,7 +197,7 @@ func testParseImagesJsonFile(t *testing.T, _ spec.G, it spec.S) {
 
 	it("erros when images.json file is not a valid json", func() {
 
-		imagesJsonContent := utils.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, true)
+		imagesJsonContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18", "20"}, []bool{false, false, true}, true)
 		imagesJsonTmpDir := t.TempDir()
 		imagesJsonPath := filepath.Join(imagesJsonTmpDir, "images_not_valid.json")
 		Expect(os.WriteFile(imagesJsonPath, []byte(imagesJsonContent), 0600)).To(Succeed())
@@ -298,11 +299,11 @@ func testGetNodejsStackImages(t *testing.T, context spec.G, it spec.S) {
 		it("should error with a message", func() {
 
 			imagesJsonTmpDir := t.TempDir()
-			imagesJsonNodeVersionNotIntegerContent := utils.GenerateImagesJsonFile([]string{"16", "18", "hello"}, []bool{false, false, true}, false)
+			imagesJsonNodeVersionNotIntegerContent := testhelpers.GenerateImagesJsonFile([]string{"16", "18", "hello"}, []bool{false, false, true}, false)
 			imagesJsonNodeVersionNotIntegerPath := filepath.Join(imagesJsonTmpDir, "images_node_version_not_integer.json")
 			Expect(os.WriteFile(imagesJsonNodeVersionNotIntegerPath, []byte(imagesJsonNodeVersionNotIntegerContent), 0600)).To(Succeed())
 
-			imagesJsonNoNodeVersionContent := utils.GenerateImagesJsonFile([]string{"16", "", "20"}, []bool{false, false, true}, false)
+			imagesJsonNoNodeVersionContent := testhelpers.GenerateImagesJsonFile([]string{"16", "", "20"}, []bool{false, false, true}, false)
 			imagesJsonNoNodeVersionPath := filepath.Join(imagesJsonTmpDir, "images_no_node_version.json")
 			Expect(os.WriteFile(imagesJsonNoNodeVersionPath, []byte(imagesJsonNoNodeVersionContent), 0600)).To(Succeed())
 
