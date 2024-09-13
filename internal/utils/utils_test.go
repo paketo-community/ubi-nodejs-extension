@@ -461,21 +461,13 @@ func testGenerateRunDockerfile(t *testing.T, context spec.G, it spec.S) {
 
 func testGetDuringBuildPermissions(t *testing.T, context spec.G, it spec.S) {
 
-	var (
-		Expect = NewWithT(t).Expect
-		tmpDir string
-		path   string
-		err    error
-	)
+	var Expect = NewWithT(t).Expect
 
 	context("/etc/passwd exists and has the cnb user", func() {
 
 		it("It should return the permissions specified for the cnb user", func() {
-			tmpDir, err = os.MkdirTemp("", "")
-			Expect(err).NotTo(HaveOccurred())
-
-			path = filepath.Join(tmpDir, "/passwd")
-
+			tmpDir := t.TempDir()
+			path := filepath.Join(tmpDir, "/passwd")
 			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
 daemon:x:2:2:daemon:/sbin:/sbin/nologin
@@ -506,10 +498,8 @@ nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 	context("/etc/passwd exists and does NOT have the cnb user", func() {
 
 		it("It should return the default permissions", func() {
-			tmpDir, err = os.MkdirTemp("", "")
-			Expect(err).NotTo(HaveOccurred())
-
-			path = filepath.Join(tmpDir, "/passwd")
+			tmpDir := t.TempDir()
+			path := filepath.Join(tmpDir, "/passwd")
 
 			Expect(os.WriteFile(path, []byte(`root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
@@ -537,11 +527,8 @@ nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 	})
 
 	context("/etc/passwd does NOT exist", func() {
-
 		it("It should return the default permissions", func() {
-			tmpDir, err = os.MkdirTemp("", "")
-			Expect(err).NotTo(HaveOccurred())
-
+			tmpDir := t.TempDir()
 			duringBuilderPermissions := utils.GetDuringBuildPermissions(tmpDir)
 
 			Expect(duringBuilderPermissions).To(Equal(
