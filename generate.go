@@ -16,8 +16,6 @@ import (
 )
 
 const PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
-const DEFAULT_USER_ID = 1002
-const DEFAULT_GROUP_ID = 1000
 const CONFIG_TOML_PATH = "/tmp/config.toml"
 
 //go:generate faux --interface DependencyManager --output fakes/dependency_manager.go

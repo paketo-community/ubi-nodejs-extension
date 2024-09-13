@@ -13,13 +13,11 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/paketo-community/ubi-nodejs-extension/constants"
 	"github.com/paketo-community/ubi-nodejs-extension/structs"
 
 	"github.com/BurntSushi/toml"
 )
-
-var DEFAULT_USER_ID = 1002
-var DEFAULT_GROUP_ID = 1000
 
 //go:embed templates/build.Dockerfile
 var buildDockerfileTemplate string
@@ -158,8 +156,8 @@ func ParseImagesJsonFile(imagesJsonPath string) (ImagesJson, error) {
 func GetDuringBuildPermissions(filepath string) structs.DuringBuildPermissions {
 
 	defaultPermissions := structs.DuringBuildPermissions{
-		CNB_USER_ID:  DEFAULT_USER_ID,
-		CNB_GROUP_ID: DEFAULT_GROUP_ID,
+		CNB_USER_ID:  constants.DEFAULT_USER_ID,
+		CNB_GROUP_ID: constants.DEFAULT_GROUP_ID,
 	}
 	re := regexp.MustCompile(`cnb:x:(\d+):(\d+)::`)
 

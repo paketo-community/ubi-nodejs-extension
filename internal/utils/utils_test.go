@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
+	"github.com/paketo-community/ubi-nodejs-extension/constants"
 	testhelpers "github.com/paketo-community/ubi-nodejs-extension/internal/testhelpers"
 	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
 	"github.com/paketo-community/ubi-nodejs-extension/structs"
@@ -529,8 +530,8 @@ nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 
 			Expect(duringBuildPermissions).To(Equal(
 				structs.DuringBuildPermissions{
-					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
-					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+					CNB_USER_ID:  constants.DEFAULT_USER_ID,
+					CNB_GROUP_ID: constants.DEFAULT_GROUP_ID},
 			))
 		})
 	})
@@ -545,8 +546,8 @@ nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
 
 			Expect(duringBuilderPermissions).To(Equal(
 				structs.DuringBuildPermissions{
-					CNB_USER_ID:  ubinodejsextension.DEFAULT_USER_ID,
-					CNB_GROUP_ID: ubinodejsextension.DEFAULT_GROUP_ID},
+					CNB_USER_ID:  constants.DEFAULT_USER_ID,
+					CNB_GROUP_ID: constants.DEFAULT_GROUP_ID},
 			))
 		})
 	})
