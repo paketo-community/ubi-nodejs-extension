@@ -7,11 +7,9 @@ import (
 	"github.com/sclevine/spec/report"
 )
 
-func TestUnitNode(t *testing.T) {
-	suite := spec.New("node", spec.Report(report.Terminal{}))
+func TestUnitUbiNodejsExtension(t *testing.T) {
+	suite := spec.New("ubi-nodejs-extension", spec.Report(report.Terminal{}))
 	suite("Detect", testDetect)
 	suite("Generate", testGenerate)
-	suite("Dockerfile Creation", testFillPropsToTemplate)
-	suite("Fetching during build permissions", testFetchingPermissionsFromEtchPasswdFile)
 	suite.Run(t)
 }

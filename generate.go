@@ -1,14 +1,11 @@
 package ubinodejsextension
 
 import (
-	"bytes"
-	_ "embed"
 	"os"
-	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
-	"text/template"
+
+	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
+	"github.com/paketo-community/ubi-nodejs-extension/structs"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/paketo-buildpacks/libnodejs"
@@ -18,30 +15,8 @@ import (
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 )
 
-var PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
-
-var DEFAULT_USER_ID = 1002
-var DEFAULT_GROUP_ID = 1000
-
-type DuringBuildPermissions struct {
-	CNB_USER_ID, CNB_GROUP_ID int
-}
-
-//go:embed templates/build.Dockerfile
-var buildDockerfileTemplate string
-
-type BuildDockerfileProps struct {
-	NODEJS_VERSION            uint64
-	CNB_USER_ID, CNB_GROUP_ID int
-	CNB_STACK_ID, PACKAGES    string
-}
-
-//go:embed templates/run.Dockerfile
-var runDockerfileTemplate string
-
-type RunDockerfileProps struct {
-	Source string
-}
+const PACKAGES = "make gcc gcc-c++ libatomic_ops git openssl-devel nodejs npm nodejs-nodemon nss_wrapper which python3"
+const CONFIG_TOML_PATH = "/tmp/config.toml"
 
 //go:generate faux --interface DependencyManager --output fakes/dependency_manager.go
 type DependencyManager interface {
@@ -50,7 +25,7 @@ type DependencyManager interface {
 	GenerateBillOfMaterials(dependencies ...postal.Dependency) []packit.BOMEntry
 }
 
-func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions DuringBuildPermissions) packit.GenerateFunc {
+func Generate(dependencyManager DependencyManager, logger scribe.Emitter, duringBuildPermissions structs.DuringBuildPermissions, imagesJsonPath string) packit.GenerateFunc {
 	return func(context packit.GenerateContext) (packit.GenerateResult, error) {
 
 		logger.Title("%s %s", context.Info.Name, context.Info.Version)
@@ -65,10 +40,19 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Candidates(allNodeVersionsInPriorityOrder)
 
-		// Search and fetch the version from the extension.toml
+		configTomlFileContent, err := utils.GenerateConfigTomlContentFromImagesJson(imagesJsonPath, context.Stack)
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+
+		//save config.toml file
+		err = os.WriteFile(CONFIG_TOML_PATH, configTomlFileContent, 0644)
+		if err != nil {
+			return packit.GenerateResult{}, err
+		}
+
 		nodeVersion, _ := highestPriorityNodeVersion.Metadata["version"].(string)
-		extensionFilePath := filepath.Join(context.CNBPath, "extension.toml")
-		dependency, err := dependencyManager.Resolve(extensionFilePath, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
+		dependency, err := dependencyManager.Resolve(CONFIG_TOML_PATH, highestPriorityNodeVersion.Name, nodeVersion, context.Stack)
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
@@ -91,26 +75,23 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 
 		logger.Process("Selected Node Engine Major version %d", selectedNodeMajorVersion)
 
-		// These variables have to be fetched from the env
-		CNB_STACK_ID := os.Getenv("CNB_STACK_ID")
-
 		// Generating build.Dockerfile
-		buildDockerfileContent, err := FillPropsToTemplate(BuildDockerfileProps{
+		buildDockerfileContent, err := utils.GenerateBuildDockerfile(structs.BuildDockerfileProps{
 			NODEJS_VERSION: selectedNodeMajorVersion,
 			CNB_USER_ID:    duringBuildPermissions.CNB_USER_ID,
 			CNB_GROUP_ID:   duringBuildPermissions.CNB_GROUP_ID,
-			CNB_STACK_ID:   CNB_STACK_ID,
+			CNB_STACK_ID:   context.Stack,
 			PACKAGES:       PACKAGES,
-		}, buildDockerfileTemplate)
+		})
 
 		if err != nil {
 			return packit.GenerateResult{}, err
 		}
 
 		// Generating run.Dockerfile
-		runDockerfileContent, err := FillPropsToTemplate(RunDockerfileProps{
+		runDockerfileContent, err := utils.GenerateRunDockerfile(structs.RunDockerfileProps{
 			Source: selectedNodeRunImage,
-		}, runDockerfileTemplate)
+		})
 
 		if err != nil {
 			return packit.GenerateResult{}, err
@@ -121,60 +102,5 @@ func Generate(dependencyManager DependencyManager, logger scribe.Emitter, during
 			BuildDockerfile: strings.NewReader(buildDockerfileContent),
 			RunDockerfile:   strings.NewReader(runDockerfileContent),
 		}, nil
-	}
-}
-
-func FillPropsToTemplate(properties interface{}, templateString string) (result string, Error error) {
-
-	templ, err := template.New("template").Parse(templateString)
-	if err != nil {
-		return "", err
-	}
-
-	var buf bytes.Buffer
-	err = templ.Execute(&buf, properties)
-	if err != nil {
-		panic(err)
-	}
-
-	return buf.String(), nil
-}
-
-func GetDuringBuildPermissions(filepath string) DuringBuildPermissions {
-
-	defaultPermissions := DuringBuildPermissions{
-		CNB_USER_ID:  DEFAULT_USER_ID,
-		CNB_GROUP_ID: DEFAULT_GROUP_ID,
-	}
-	re := regexp.MustCompile(`cnb:x:(\d+):(\d+)::`)
-
-	etcPasswdFile, err := os.ReadFile(filepath)
-
-	if err != nil {
-		return defaultPermissions
-	}
-	etcPasswdContent := string(etcPasswdFile)
-
-	matches := re.FindStringSubmatch(etcPasswdContent)
-
-	if len(matches) != 3 {
-		return defaultPermissions
-	}
-
-	CNB_USER_ID, err := strconv.Atoi(matches[1])
-
-	if err != nil {
-		return defaultPermissions
-	}
-
-	CNB_GROUP_ID, err := strconv.Atoi(matches[2])
-
-	if err != nil {
-		return defaultPermissions
-	}
-
-	return DuringBuildPermissions{
-		CNB_USER_ID:  CNB_USER_ID,
-		CNB_GROUP_ID: CNB_GROUP_ID,
 	}
 }

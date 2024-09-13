@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/paketo-buildpacks/occam"
@@ -70,12 +69,12 @@ func testProvides(t *testing.T, context spec.G, it spec.S) {
 				"    Candidate version sources (in priority order):",
 				"      <unknown> -> \"\""))
 
-			Expect(logs).To(ContainLines(fmt.Sprintf("  Selected Node Engine Major version %s", strings.Split(settings.Metadata.DefaultVersions.Node, ".")[0])))
+			Expect(logs).To(ContainLines(MatchRegexp(`  Selected Node Engine Major version \d+`)))
 			Expect(logs).To(ContainLines("===> RESTORING"))
 			Expect(logs).To(ContainLines("===> EXTENDING (BUILD)"))
 			Expect(logs).To(ContainLines(
 				"[extender (build)] Enabling module streams:",
-				fmt.Sprintf("[extender (build)]     nodejs:%s", strings.Split(settings.Metadata.DefaultVersions.Node, ".")[0])))
+				MatchRegexp(`\[extender \(build\)\]     nodejs:\d+`)))
 
 			// SBOM is not supported at the moment from UBI image
 			// therefore there are no available logs to test/validate
