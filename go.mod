@@ -5,7 +5,7 @@ go 1.23.4
 require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/Masterminds/semver/v3 v3.3.1
-	github.com/onsi/gomega v1.36.0
+	github.com/onsi/gomega v1.36.1
 	github.com/paketo-buildpacks/libnodejs v0.3.0
 	github.com/paketo-buildpacks/occam v0.20.0
 	github.com/paketo-buildpacks/packit v1.3.1
