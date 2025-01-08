@@ -1,6 +1,6 @@
 # Paketo Node.js Extension for ubi
 
-## `docker.io/paketocommunity/ubi-nodejs-extension`
+## `docker.io/paketobuildpacks/ubi-nodejs-extension`
 
 The Node.js Extension for [UBI](https://www.redhat.com/en/blog/introducing-red-hat-universal-base-image) allows builders to be created which build Node.js applications on top of Red Hat's Node.js ubi containers. For example [ubi8/nodejs-20-minimal](https://catalog.redhat.com/software/containers/rhel8/nodejs-20-minimal/6476fa2bb83e400ee9ce2332).
 
@@ -44,7 +44,7 @@ The [build-ubi-base](https://github.com/paketo-community/builder-ubi-base) build
 ```sh
 pack build test-app \
    --path ./app-dir \
-   --extension docker.io/paketocommunity/ubi-nodejs-extension \
+   --extension docker.io/paketobuildpacks/ubi-nodejs-extension \
    --buildpack paketo-buildpacks/nodejs \
    --builder paketocommunity/builder-ubi-buildpackless-base
 ```

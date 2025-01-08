@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
-	"github.com/paketo-community/ubi-nodejs-extension/structs"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/internal/utils"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/structs"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/paketo-buildpacks/libnodejs"

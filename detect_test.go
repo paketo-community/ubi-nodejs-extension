@@ -3,7 +3,7 @@ package ubinodejsextension_test
 import (
 	"testing"
 
-	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
+	ubinodejsextension "github.com/paketo-buildpacks/ubi-nodejs-extension"
 
 	. "github.com/onsi/gomega"
 	"github.com/paketo-buildpacks/packit/v2"

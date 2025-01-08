@@ -1,8 +1,8 @@
 api = "0.7"
 
 [extension]
-homepage = "https://github.com/paketo-community/ubi-nodejs-extension"
-id = "paketo-community/ubi-nodejs-extension"
+homepage = "https://github.com/paketo-buildpacks/ubi-nodejs-extension"
+id = "paketo-buildpacks/ubi-nodejs-extension"
 name = "Ubi Node.js Extension"
 description = "This extension installs the appropriate Node.js runtime via dnf"
 

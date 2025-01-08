@@ -13,8 +13,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/paketo-community/ubi-nodejs-extension/constants"
-	"github.com/paketo-community/ubi-nodejs-extension/structs"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/constants"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/structs"
 
 	"github.com/BurntSushi/toml"
 )
