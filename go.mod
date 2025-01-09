@@ -1,4 +1,4 @@
-module github.com/paketo-community/ubi-nodejs-extension
+module github.com/paketo-buildpacks/ubi-nodejs-extension
 
 go 1.23.4
 

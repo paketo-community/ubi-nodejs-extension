@@ -8,8 +8,8 @@ import (
 	"github.com/paketo-buildpacks/packit/v2/postal"
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 
-	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
-	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
+	ubinodejsextension "github.com/paketo-buildpacks/ubi-nodejs-extension"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/internal/utils"
 )
 
 const IMAGES_JSON_PATH = "/etc/buildpacks/images.json"

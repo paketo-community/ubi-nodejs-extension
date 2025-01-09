@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	ubinodejsextension "github.com/paketo-community/ubi-nodejs-extension"
-	"github.com/paketo-community/ubi-nodejs-extension/constants"
-	testhelpers "github.com/paketo-community/ubi-nodejs-extension/internal/testhelpers"
-	"github.com/paketo-community/ubi-nodejs-extension/internal/utils"
-	"github.com/paketo-community/ubi-nodejs-extension/structs"
+	ubinodejsextension "github.com/paketo-buildpacks/ubi-nodejs-extension"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/constants"
+	testhelpers "github.com/paketo-buildpacks/ubi-nodejs-extension/internal/testhelpers"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/internal/utils"
+	"github.com/paketo-buildpacks/ubi-nodejs-extension/structs"
 	"github.com/sclevine/spec"
 )
 
