@@ -7,5 +7,21 @@ name = "Ubi Node.js Extension"
 description = "This extension installs the appropriate Node.js runtime via dnf"
 
 [metadata]
-  pre-package = "./scripts/build.sh"
-  include-files = ["bin/generate", "bin/detect", "bin/run", "extension.toml"]
+  pre-package = "./scripts/build.sh --target linux/amd64 --target linux/arm64"
+  include-files = [
+    "linux/amd64/bin/generate",
+    "linux/amd64/bin/detect",
+    "linux/amd64/bin/run",
+    "linux/arm64/bin/generate",
+    "linux/arm64/bin/detect",
+    "linux/arm64/bin/run",
+    "extension.toml"
+  ]
+
+[[targets]]
+  os = "linux"
+  arch = "amd64"
+
+[[targets]]
+  os = "linux"
+  arch = "arm64"
